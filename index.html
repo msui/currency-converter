@@ -5,6 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Currency Converter</title>
 <style>
+  /* ============================================================
+     DESIGN TOKENS
+     Every color anywhere in this app should reference one of these
+     — never a hardcoded hex value in a component rule. There are
+     four independent groups, and they don't mix:
+
+     1. THEME tokens (--bg, --text, --text-dim, --card*, --green,
+        --blue-fg, --toggle-bg) — react to light/dark mode via
+        body.light-mode. Used by page-level text and the toggle.
+
+     2. GLASS tokens (--glass-*) — the translucent card look used
+        by Exchange Rate / Enter a Price / the result / Recent
+        Conversions / the top banner. Also light/dark-reactive.
+        Any new glass container should use the .glass-surface
+        utility class below rather than repeating these by hand.
+
+     3. PAPER tokens (--paper-*) — the "white sea card" look used
+        by Split the Cost, the Tip Calculator card, and their
+        internal fields. Deliberately fixed — does NOT react to
+        light/dark mode, since these cards are always white paper
+        regardless of theme.
+
+     4. PANEL tokens (--panel-*) — the always-dark expandable
+        sub-panels inside Settings (Currency selector, Background,
+        About). Deliberately fixed dark — Settings itself never
+        changes with light/dark mode, so neither do these.
+
+     A fifth category, FIXED tokens (--fixed-*), covers a handful
+     of buttons that were explicitly designed to never change
+     color regardless of theme, currency, or background (Convert,
+     the active tip tab, the standalone Tip Calculator's Close
+     button). These intentionally sit outside the theme system —
+     don't "fix" them into a theme token by mistake.
+     ============================================================ */
   :root {
     --bg: #000000;
     --card: #121212;
@@ -24,6 +58,38 @@
     --glass-border: rgba(255, 255, 255, 0.14);
     --glass-sheen: rgba(255, 255, 255, 0.06);
     --glass-shadow: rgba(0, 0, 0, 0.4);
+    --warning-text: #d4a24e;
+
+    /* Paper — fixed white-card look, same in every theme */
+    --paper-bg: #ffffff;
+    --paper-border: #e2e8ec;
+    --paper-text: #10171c;
+    --paper-text-secondary: #6b7680;
+    --paper-text-tertiary: #aab2b9;
+    --paper-field-bg: #f2f6f8;
+
+    /* Panel — fixed dark Settings sub-panels, same in every theme */
+    --panel-bg: #242426;
+    --panel-border: #2c2c2e;
+    --panel-text: #ffffff;
+    --panel-text-secondary: #a8a8ad;
+    --panel-field-bg: #2c2c2e;
+    --panel-field-border: #3a3a3c;
+    /* Accent colors for text directly on the dark panel background — distinct
+       from --flag-green/--flag-red, which are tuned for use as button FILLS
+       with white text on top, not as text sitting directly on this panel.
+       Using flag-green as text color here measured at 2.11:1 — a real AA
+       failure, not just a style choice. */
+    --panel-accent: #3ddc84;
+    --panel-error: #ff7a6e;
+    /* The one exception: the outer Settings footer bar is very slightly
+       lighter in light mode (a legibility nicety), unlike every other
+       panel token above which never changes. */
+    --settings-footer-bg: #000000;
+
+    /* Fixed — a handful of intentionally theme-invariant buttons */
+    --fixed-dark: #10171c;
+    --fixed-dark-alt: #3a3a3c;
   }
   body.light-mode {
     --bg: #f4f6f7;
@@ -38,8 +104,24 @@
     --glass-border: rgba(16, 23, 28, 0.16);
     --glass-sheen: rgba(255, 255, 255, 0.9);
     --glass-shadow: rgba(16, 23, 28, 0.14);
+    --warning-text: #8a5a00;
+    --settings-footer-bg: #2c2c2e;
+    /* Paper, Panel, and Fixed tokens intentionally have no entry
+       here — they don't change with light/dark mode. */
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Every glass container (Exchange Rate, Enter a Price, the result card,
+     Recent Conversions, the top banner) shares this exact treatment. Add
+     this class to any new glass container instead of repeating these five
+     properties by hand — that repetition is exactly how the answer-card
+     border bug happened (one copy got updated, the other didn't). */
+  .glass-surface {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
+  }
   body {
     margin: 0;
     background: var(--bg);
@@ -89,13 +171,9 @@
     transition: background 0.2s;
   }
   .rate-group {
-    background-color: var(--glass-bg);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid var(--glass-border);
     border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 8px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
+    cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
   }
   .rate-row {
@@ -119,10 +197,9 @@
   .rate-freshness.stale { color: #d4a24e; }
   body.light-mode .rate-freshness.stale { color: #8a5a00; }
   .top-rate-banner {
-    background-color: var(--glass-bg);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: none;
     border-bottom: 1px solid var(--glass-border);
+    box-shadow: none;
     width: 100vw;
     position: relative;
     left: 50%;
@@ -151,18 +228,18 @@
   body.light-mode .top-rate-banner-text { color: #8a5a00; }
   .top-rate-banner-close {
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     border: none;
     background: rgba(120, 120, 128, 0.24);
     color: #c7c7c7;
-    font-size: 13px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
   }
+  .top-rate-banner-close svg { width: 16px; height: 16px; stroke-width: 2.25; }
   .top-rate-banner-close:active { transform: scale(0.92); }
   body.light-mode .top-rate-banner-close { color: #57626b; }
   .refresh-btn {
@@ -186,15 +263,10 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .main-card {
-    background-color: var(--glass-bg);
     background-image: linear-gradient(var(--input-bg, transparent), var(--input-bg, transparent));
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid var(--glass-border);
     border-radius: 18px;
     padding: 24px 18px;
     margin-bottom: 16px;
-    box-shadow: 0 8px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
     transition: border-color 0.2s, background-image 0.2s;
   }
   .field-label {
@@ -241,6 +313,7 @@
     margin-bottom: 4px;
     min-height: 14px;
   }
+  .price-hint:empty { margin: 0; min-height: 0; }
   .price-hint-total { color: var(--text); font-weight: 700; }
   .currency-mark {
     font-size: 48px;
@@ -289,6 +362,7 @@
     border-radius: 999px;
     padding: 6px;
     display: flex;
+    align-items: stretch;
     min-height: 56px;
     transition: border-color 0.2s;
   }
@@ -321,12 +395,11 @@
     transition: color 0.25s;
     text-align: center;
     padding: 10px 4px;
-    line-height: 1.25;
+    line-height: 20px;
   }
   .toggle-option.active { color: #ffffff; }
 
   .convert-btn,
-  .split-btn,
   .clear-all-btn,
   .tipcalc-clear-btn,
   .tipcalc-minimize-btn {
@@ -344,24 +417,19 @@
 
   .convert-btn {
     background: #ffffff;
-    color: #10171c;
+    color: var(--fixed-dark);
     border: none;
     margin-top: 20px;
   }
   .convert-btn:active { transform: scale(0.98); }
 
   .answer-card {
-    background-color: var(--glass-bg);
     background-image: linear-gradient(var(--output-bg, transparent), var(--output-bg, transparent));
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid var(--output-accent, var(--glass-border));
     border-radius: 18px;
     padding: 24px 18px;
     margin-bottom: 16px;
     text-align: left;
     display: none;
-    box-shadow: 0 8px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
   }
   .answer-label {
     font-size: 16px;
@@ -397,7 +465,7 @@
   .answer-sub {
     font-size: 14px;
     color: var(--text-dim);
-    margin-top: 6px;
+    margin-top: 14px;
   }
   .answer-rough {
     font-size: 14px;
@@ -413,32 +481,60 @@
     color: var(--output-text, var(--green));
   }
 
-  .split-btn {
+  .split-accordion {
     background: #ffffff;
-    color: #3a3a3c;
-    border: 1px solid var(--flag-green);
+    border: 1px solid var(--paper-border);
+    border-radius: 18px;
     margin-bottom: 16px;
+    overflow: hidden;
   }
-  .split-btn:active { transform: scale(0.98); }
-
+  /* Standalone card style — still used by the Tip Calculator's own card in Settings */
   .split-card {
     background: #ffffff;
-    border: 1px solid #e2e8ec;
+    border: 1px solid var(--paper-border);
     border-radius: 18px;
     padding: 22px 18px;
     margin-bottom: 16px;
   }
-  .split-card .field-label { color: #6b7680; }
+  .split-card .field-label { color: var(--paper-text-secondary); }
+  .split-accordion-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    padding: 20px 18px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--paper-text);
+    cursor: pointer;
+  }
+  .split-accordion-header:active { background: rgba(0, 0, 0, 0.04); }
+  .split-accordion-chevron {
+    display: flex;
+    color: var(--paper-text-secondary);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .split-accordion-chevron svg { width: 16px; height: 16px; }
+  .split-accordion-chevron.open { transform: rotate(180deg); }
+  .split-accordion-body {
+    padding: 4px 18px 22px;
+    border-top: 1px solid var(--paper-border);
+    padding-top: 22px;
+  }
+  .split-accordion-body .field-label { color: var(--paper-text-secondary); }
   .split-controls {
     padding-bottom: 18px;
     margin-bottom: 18px;
-    border-bottom: 1px solid #e2e8ec;
+    border-bottom: 1px solid var(--paper-border);
   }
   .people-select {
     width: 100%;
-    background: #f2f6f8;
-    border: 1px solid #dbe3e8;
-    color: #10171c;
+    background: var(--paper-field-bg);
+    border: 1px solid var(--paper-border);
+    color: var(--paper-text);
     font-size: 18px;
     font-weight: 700;
     font-family: inherit;
@@ -454,21 +550,21 @@
   }
   .people-select:focus {
     outline: none;
-    border-color: #10171c;
-    box-shadow: 0 0 0 1.5px #10171c;
+    border-color: var(--paper-text);
+    box-shadow: 0 0 0 1.5px var(--paper-text);
   }
   .split-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     padding: 10px 0;
-    border-bottom: 1px solid #e2e8ec;
+    border-bottom: 1px solid var(--paper-border);
     font-size: 15px;
   }
   .split-row:last-of-type { border-bottom: none; }
-  .split-row-label { color: #6b7680; }
-  .split-row-value { font-weight: 400; font-size: 16px; color: #5a6570; text-align: right; }
-  .split-row-value.total { font-weight: 800; font-size: 19px; color: #10171c; }
+  .split-row-label { color: var(--paper-text-secondary); }
+  .split-row-value { font-weight: 400; font-size: 16px; color: var(--paper-text-secondary); text-align: right; }
+  .split-row-value.total { font-weight: 800; font-size: 19px; color: var(--paper-text); }
   .split-row-values {
     display: flex;
     flex-direction: column;
@@ -476,13 +572,13 @@
   }
   .split-row-alt {
     font-size: 12px;
-    color: #aab2b9;
+    color: var(--paper-text-tertiary);
     font-weight: 600;
     margin-top: 2px;
     display: none;
     text-align: right;
   }
-  .split-card.show-both .split-row-alt { display: block; }
+  .split-accordion-body.show-both .split-row-alt { display: block; }
   .show-both-row {
     display: flex;
     align-items: center;
@@ -492,26 +588,26 @@
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #6b7680;
+    color: var(--paper-text-secondary);
     cursor: pointer;
   }
   .show-both-row input[type="checkbox"] {
     width: 20px;
     height: 20px;
-    accent-color: #3a3a3c;
+    accent-color: var(--paper-text);
     flex-shrink: 0;
   }
   .breakdown-heading {
     font-size: 11px;
     font-weight: 700;
-    color: #10171c;
+    color: var(--paper-text);
     text-transform: uppercase;
     letter-spacing: 0.07em;
     margin-bottom: 4px;
   }
   .breakdown-divider {
     height: 2px;
-    background: #10171c;
+    background: var(--paper-text);
     border-radius: 2px;
     margin: 18px 0 16px;
     opacity: 0.85;
@@ -521,9 +617,9 @@
     width: 100%;
     height: 46px;
     border-radius: 12px;
-    border: 1.5px solid #10171c;
+    border: 1.5px solid var(--fixed-dark);
     background: #ffffff;
-    color: #10171c;
+    color: var(--fixed-dark);
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
@@ -534,8 +630,8 @@
   .copy-summary-btn.copied { background: var(--flag-green); border-color: var(--flag-green); color: #ffffff; }
   .tip-tabs {
     display: flex;
-    background: #f2f6f8;
-    border: 1px solid #dbe3e8;
+    background: var(--paper-field-bg);
+    border: 1px solid var(--paper-border);
     border-radius: 12px;
     padding: 4px;
     gap: 4px;
@@ -549,7 +645,7 @@
     padding: 12px 1px;
     font-size: 12px;
     font-weight: 700;
-    color: #6b7680;
+    color: var(--paper-text-secondary);
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
   }
@@ -557,8 +653,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #f2f6f8;
-    border: 1px solid #dbe3e8;
+    background: var(--paper-field-bg);
+    border: 1px solid var(--paper-border);
     border-radius: 12px;
     padding: 10px 14px;
     margin-top: 8px;
@@ -569,16 +665,16 @@
     border: none;
     font-size: 17px;
     font-weight: 700;
-    color: #10171c;
+    color: var(--paper-text);
     font-family: inherit;
     min-width: 0;
   }
   .tip-custom-input:focus { outline: none; }
   .tip-custom-input::-webkit-outer-spin-button,
   .tip-custom-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .tip-custom-suffix { font-size: 17px; font-weight: 700; color: #6b7680; }
+  .tip-custom-suffix { font-size: 17px; font-weight: 700; color: var(--paper-text-secondary); }
   .tip-tab.active {
-    background: #10171c;
+    background: var(--fixed-dark);
     color: #ffffff;
   }
   .tip-tab:active { transform: scale(0.97); }
@@ -594,24 +690,18 @@
 
   /* --- USD mode: American flag colors (red, white, blue) --- */
   body.usd-mode .toggle-option.active { color: #ffffff; }
-  body.usd-mode .split-btn { border-color: var(--us-blue); }
 
   .history {
-    margin-top: 8px;
-  }
-  .history-title {
-    font-size: 12px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 20px 0 8px;
+    margin-top: 20px;
+    border-radius: 14px;
+    padding-bottom: 16px;
   }
   .history-item {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 4px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--card-border);
     font-size: 14px;
   }
@@ -629,6 +719,7 @@
   .clear-btn {
     display: block;
     margin-left: auto;
+    margin-right: 16px;
     background: none;
     border: none;
     color: var(--text-dim);
@@ -641,7 +732,7 @@
 
   /* --- iOS-style settings footer --- */
   .settings-footer {
-    background: #000000;
+    background: var(--settings-footer-bg);
     width: 100vw;
     position: relative;
     left: 50%;
@@ -651,12 +742,11 @@
     box-sizing: border-box;
     transition: background 0.2s;
   }
-  body.light-mode .settings-footer { background: #2c2c2e; }
   .settings-footer-inner {
     width: calc(100vw - 32px);
     max-width: 420px;
     margin: 0 auto;
-    padding: 8px 0 40px;
+    padding: 32px 0 40px;
     box-sizing: border-box;
   }
   .settings-group {
@@ -674,11 +764,11 @@
     justify-content: space-between;
     min-height: 54px;
     padding: 10px 16px;
-    border-bottom: 1px solid #2c2c2e;
+    border-bottom: 1px solid var(--panel-border);
     cursor: pointer;
   }
   .settings-row:last-child { border-bottom: none; }
-  .settings-row-label { font-size: 16px; color: #ffffff; font-weight: 400; }
+  .settings-row-label { font-size: 16px; color: var(--panel-text); font-weight: 400; }
   .settings-row-value {
     font-size: 15px;
     color: #b0b0b5;
@@ -722,24 +812,24 @@
   .ios-switch.on .ios-switch-knob { transform: translateX(20px); }
 
   .currency-panel {
-    background: #242426;
+    background: var(--panel-bg);
     padding: 6px 0;
     display: none;
-    border-top: 1px solid #2c2c2e;
-    border-bottom: 1px solid #2c2c2e;
+    border-top: 1px solid var(--panel-border);
+    border-bottom: 1px solid var(--panel-border);
   }
   .currency-panel.open { display: block; }
   .currency-hint {
     font-size: 12px;
-    color: #8a8a8e;
+    color: var(--panel-text-secondary);
     padding: 8px 16px 4px;
   }
   .background-panel {
-    background: #242426;
+    background: var(--panel-bg);
     padding: 6px 0;
     display: none;
-    border-top: 1px solid #2c2c2e;
-    border-bottom: 1px solid #2c2c2e;
+    border-top: 1px solid var(--panel-border);
+    border-bottom: 1px solid var(--panel-border);
   }
   .background-panel.open { display: block; }
   .background-option {
@@ -748,13 +838,13 @@
     gap: 14px;
     padding: 12px 16px;
     cursor: pointer;
-    border-bottom: 1px solid #2c2c2e;
+    border-bottom: 1px solid var(--panel-border);
   }
   .background-option:last-child { border-bottom: none; }
   .background-option input[type="radio"] {
     width: 20px;
     height: 20px;
-    accent-color: #10171c;
+    accent-color: var(--panel-accent);
     flex-shrink: 0;
   }
   .background-swatch {
@@ -763,46 +853,68 @@
     border-radius: 10px;
     flex-shrink: 0;
     border: 1px solid rgba(255, 255, 255, 0.15);
+    position: relative;
+    overflow: hidden;
   }
-  .background-swatch-dark { background: #000000; }
-  .background-swatch-rainbow {
-    background: linear-gradient(160deg, #8a1330 0%, #a3521c 22%, #55591f 45%, #133f52 68%, #3a205e 100%);
+  .background-swatch::before,
+  .background-swatch::after {
+    content: '';
+    position: absolute;
+    inset: 0;
   }
-  .background-option-label { font-size: 15px; color: #ffffff; font-weight: 600; }
+  /* Diagonal split, top-left to bottom-right: upper-right triangle = light
+     mode, lower-left triangle = dark mode — same split for both chips so
+     each one shows how that background looks in both themes at a glance. */
+  .background-swatch::before { clip-path: polygon(0 0, 100% 0, 100% 100%); }
+  .background-swatch::after { clip-path: polygon(0 0, 100% 100%, 0 100%); }
+  .background-swatch-dark::before { background: #ffffff; }
+  .background-swatch-dark::after { background: #000000; }
+  .background-swatch-rainbow::before {
+    background: linear-gradient(135deg, #f6c3cf 0%, #f6dcb0 30%, #e4e8ad 60%, #b9e2ea 80%, #d8c9f0 100%);
+  }
+  .background-swatch-rainbow::after {
+    background: linear-gradient(135deg, #8a1330 0%, #a3521c 30%, #55591f 60%, #133f52 80%, #3a205e 100%);
+  }
+  .background-option-label { font-size: 15px; color: var(--panel-text); font-weight: 600; }
   .currency-row {
     display: flex;
     align-items: center;
     gap: 12px;
     min-height: 52px;
     padding: 8px 16px;
-    border-bottom: 1px solid #2c2c2e;
+    border-bottom: 1px solid var(--panel-border);
   }
   .currency-row:last-child { border-bottom: none; }
   .currency-row.disabled { opacity: 0.35; }
   .currency-row input[type="checkbox"] {
     width: 22px;
     height: 22px;
-    accent-color: #3a3a3c;
+    accent-color: var(--panel-accent);
     flex-shrink: 0;
   }
   .currency-row-label {
     font-size: 15px;
-    color: #ffffff;
+    color: var(--panel-text);
     flex: 1;
   }
   .currency-row-code {
     font-size: 12px;
-    color: #8a8a8e;
+    color: var(--panel-text-secondary);
     font-weight: 700;
   }
   .add-currency-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 12px 16px;
     font-size: 14px;
     font-weight: 700;
-    color: var(--flag-green);
+    color: var(--panel-accent);
     cursor: pointer;
-    border-top: 1px solid #2c2c2e;
+    border-top: 1px solid var(--panel-border);
   }
+  .add-currency-icon { display: flex; flex-shrink: 0; }
+  .add-currency-icon svg { width: 16px; height: 16px; }
   .add-currency-form {
     padding: 8px 16px 16px;
     display: flex;
@@ -810,23 +922,23 @@
     gap: 8px;
   }
   .add-currency-input {
-    background: #2c2c2e;
-    border: 1px solid #3a3a3c;
+    background: var(--panel-field-bg);
+    border: 1px solid var(--panel-field-border);
     border-radius: 10px;
     padding: 12px 14px;
     font-size: 15px;
-    color: #ffffff;
+    color: var(--panel-text);
     font-family: inherit;
   }
-  .add-currency-input::placeholder { color: #8a8a8e; }
-  .add-currency-input:focus { outline: none; border-color: var(--flag-green); }
+  .add-currency-input::placeholder { color: var(--panel-text-secondary); }
+  .add-currency-input:focus { outline: none; border-color: var(--panel-accent); }
   .add-currency-flag-input { width: 70px; text-align: center; }
   .add-currency-submit {
     height: 44px;
     border-radius: 10px;
     border: none;
-    background: var(--flag-green);
-    color: #ffffff;
+    background: var(--panel-accent);
+    color: var(--panel-bg);
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
@@ -835,18 +947,18 @@
   .add-currency-submit:disabled { opacity: 0.5; cursor: default; }
   .add-currency-status {
     font-size: 13px;
-    color: #8a8a8e;
+    color: var(--panel-text-secondary);
     min-height: 16px;
   }
-  .add-currency-status.error { color: #e0645a; }
-  .add-currency-status.success { color: var(--flag-green); }
+  .add-currency-status.error { color: var(--panel-error); }
+  .add-currency-status.success { color: var(--panel-accent); }
 
   .about-panel {
-    background: #242426;
+    background: var(--panel-bg);
     padding: 14px 16px 16px;
     display: none;
-    border-top: 1px solid #2c2c2e;
-    border-bottom: 1px solid #2c2c2e;
+    border-top: 1px solid var(--panel-border);
+    border-bottom: 1px solid var(--panel-border);
   }
   .about-panel.open { display: block; }
   .about-row {
@@ -855,15 +967,15 @@
     justify-content: space-between;
     gap: 12px;
     padding: 8px 0;
-    border-bottom: 1px solid #2c2c2e;
+    border-bottom: 1px solid var(--panel-border);
   }
   .about-row:last-of-type { border-bottom: none; }
-  .about-row-label { font-size: 14px; color: #8a8a8e; flex-shrink: 0; }
-  .about-row-value { font-size: 14px; color: #ffffff; font-weight: 700; }
+  .about-row-label { font-size: 14px; color: var(--panel-text-secondary); flex-shrink: 0; }
+  .about-row-value { font-size: 14px; color: var(--panel-text); font-weight: 700; }
   .about-url-row { align-items: flex-start; }
   .about-url {
     font-size: 13px;
-    color: #ffffff;
+    color: var(--panel-text);
     text-align: right;
     overflow-wrap: anywhere;
     cursor: pointer;
@@ -874,7 +986,7 @@
     height: 46px;
     border-radius: 12px;
     border: none;
-    background: #3a3a3c;
+    background: var(--fixed-dark-alt);
     color: #ffffff;
     font-size: 14px;
     font-weight: 700;
@@ -887,7 +999,7 @@
 
   /* --- Standalone Tip Calculator: inline expandable panel --- */
   .tipcalc-panel {
-    background: #f2f6f8;
+    background: var(--paper-field-bg);
     border-radius: 14px;
     margin-top: 10px;
     display: none;
@@ -901,25 +1013,27 @@
     margin-top: 16px;
   }
   .tipcalc-clear-btn { border: none; background: var(--flag-red); color: #ffffff; }
-  .tipcalc-minimize-btn { background: #10171c; color: #ffffff; border: none; }
+  .tipcalc-minimize-btn { background: var(--fixed-dark); color: #ffffff; border: none; }
   .tipcalc-clear-btn:active,
   .tipcalc-minimize-btn:active { transform: scale(0.98); }
 </style>
 </head>
 <body>
-<div class="top-rate-banner" id="rateWarningBanner" style="display:none;">
+<div class="top-rate-banner glass-surface" id="rateWarningBanner" style="display:none;">
   <div class="top-rate-banner-inner">
     <span class="top-rate-banner-icon">⚠️</span>
-    <span class="top-rate-banner-text">This rate hasn't refreshed in over 12 hours — tap refresh below for the latest.</span>
-    <button class="top-rate-banner-close" id="rateWarningCloseBtn" aria-label="Dismiss">✕</button>
+    <span class="top-rate-banner-text">This rate hasn't refreshed in over 12 hours.</span>
+    <button class="top-rate-banner-close" id="rateWarningCloseBtn" aria-label="Dismiss">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
   </div>
 </div>
 <div class="wrap">
   <h1 style="text-align: center;">Currency Converter</h1>
 
   <div class="rate-section">
-    <div class="rate-group">
-      <div class="answer-label" style="padding: 14px 16px 0;">Exchange Rate</div>
+    <div class="rate-group glass-surface" id="rateGroup">
+      <div class="answer-label" style="padding: 14px 16px 0; text-align: center;">Exchange Rate</div>
       <div class="rate-row">
         <div>
           <div class="rate-line"><span id="rateEqualsLabel">1 USD =</span> <span id="rateValueText" class="rate-value-text">17.47</span> <span id="rateSuffix">MXN</span></div>
@@ -937,8 +1051,8 @@
     </div>
   </div>
 
-  <div class="main-card">
-    <div class="answer-label" style="margin-bottom: 10px;">Enter a price</div>
+  <div class="main-card glass-surface">
+    <div class="answer-label" style="margin-bottom: 10px; text-align: center;">Enter a price</div>
     <div class="price-input-row" id="priceInputRow">
       <span class="currency-mark" id="currencyMark">$</span>
       <textarea id="priceInput" placeholder="0" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" rows="1">1</textarea>
@@ -958,8 +1072,8 @@
     <button class="clear-all-btn" id="clearAllBtn">Clear everything</button>
   </div>
 
-  <div class="answer-card" id="answerCard">
-    <div class="answer-label" id="answerLabel">In US dollars</div>
+  <div class="answer-card glass-surface" id="answerCard">
+    <div class="answer-label" id="answerLabel" style="text-align: center;">In US dollars</div>
     <div class="answer-value-row">
       <span class="answer-currency-mark" id="answerCurrencyMark">$</span>
       <span class="answer-value" id="answerValue">0.00</span>
@@ -968,9 +1082,15 @@
     <div class="answer-rough" id="answerRough"></div>
   </div>
 
-  <button class="split-btn" id="splitToggleBtn" style="display:none;">Split the bill</button>
+  <div class="split-accordion" id="splitAccordion" style="display:none;">
+    <button class="split-accordion-header" id="splitToggleBtn">
+      <span id="splitToggleLabel">🧾 Split the Cost</span>
+      <span class="split-accordion-chevron" id="splitChevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </button>
 
-  <div class="split-card" id="splitCard" style="display:none;">
+    <div class="split-accordion-body" id="splitCard" style="display:none;">
     <div class="split-controls">
       <div class="field-label">Number of people</div>
       <select id="peopleSelect" class="people-select">
@@ -1042,17 +1162,18 @@
       <button class="copy-summary-btn" id="copySplitBtn">📋 Copy Summary</button>
     </div>
   </div>
+  </div>
 
-  <div class="history" id="historyWrap" style="display:none;">
-    <div class="history-title">Recent conversions</div>
+  <div class="history glass-surface" id="historyWrap" style="display:none;">
+    <div class="answer-label" style="text-align: center; padding: 14px 16px 0;">Recent conversions</div>
     <div id="historyList"></div>
     <button class="clear-btn" id="clearBtn">Clear history</button>
   </div>
 
   <div class="settings-footer">
     <div class="settings-footer-inner">
-    <div class="answer-label" id="settingsTitleInGroup" style="padding: 16px 4px 8px; color: #c7c7c7;">Settings</div>
     <div class="settings-group">
+      <div class="answer-label" id="settingsTitleInGroup" style="padding: 14px 16px 0; color: #c7c7c7; text-align: center;">Settings</div>
       <div class="settings-row" id="currenciesRow">
         <span class="settings-row-label">Currency selector</span>
         <span class="settings-row-value">
@@ -1064,7 +1185,12 @@
       <div class="currency-panel" id="currencyPanel">
         <div class="currency-hint" id="currencyHint">Select exactly 2 currencies · 2/2 selected</div>
         <div id="currencyList"></div>
-        <div class="add-currency-row" id="addCurrencyRow">+ Add a currency not listed</div>
+        <div class="add-currency-row" id="addCurrencyRow">
+          <span class="add-currency-icon" id="addCurrencyIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+          <span id="addCurrencyRowLabel">Add a currency not listed</span>
+        </div>
         <div class="add-currency-form" id="addCurrencyForm" style="display:none;">
           <input type="text" id="addCurrencyCode" class="add-currency-input" placeholder="Code (e.g. THB)" maxlength="3" autocapitalize="characters" autocomplete="off">
           <input type="text" id="addCurrencyName" class="add-currency-input" placeholder="Name (e.g. Thai Baht)" autocomplete="off">
@@ -1084,7 +1210,7 @@
       <div class="settings-row" id="backgroundRow">
         <span class="settings-row-label">Background</span>
         <span class="settings-row-value">
-          <span id="backgroundSummary">🌑 Dark</span>
+          <span id="backgroundSummary">🍦 Basic & Flat</span>
           <span class="settings-chevron" id="backgroundChevron">›</span>
         </span>
       </div>
@@ -1093,12 +1219,12 @@
         <label class="background-option">
           <input type="radio" name="bgOption" value="dark" id="bgOptionDark" checked>
           <span class="background-swatch background-swatch-dark"></span>
-          <span class="background-option-label">🌑 Dark</span>
+          <span class="background-option-label">🍦 Basic & Flat</span>
         </label>
         <label class="background-option">
           <input type="radio" name="bgOption" value="rainbow" id="bgOptionRainbow">
           <span class="background-swatch background-swatch-rainbow"></span>
-          <span class="background-option-label">🌈 Canadian Rainbow</span>
+          <span class="background-option-label">🌈 Rainbow</span>
         </label>
       </div>
 
@@ -1137,7 +1263,7 @@
           <div class="field-label">Bill amount</div>
           <div class="price-input-row" style="border-bottom: 1px solid #e2e8ec; padding: 4px 0 16px;">
             <span class="currency-mark" style="font-size: 36px; color: #6b7680;">$</span>
-            <input type="text" id="tipCalcAmount" placeholder="0" inputmode="decimal" autocomplete="off" style="font-size: 36px; background: transparent; border: none; color: #10171c; font-weight: 700; font-family: inherit; width: 100%; padding: 4px 0;">
+            <input type="text" id="tipCalcAmount" placeholder="0" inputmode="decimal" autocomplete="off" style="font-size: 36px; background: transparent; border: none; color: var(--paper-text); font-weight: 700; font-family: inherit; width: 100%; padding: 4px 0; outline: none;">
           </div>
 
           <div class="split-controls" style="margin-top: 18px;">
@@ -1221,6 +1347,8 @@ const answerSub = document.getElementById('answerSub');
 const answerRough = document.getElementById('answerRough');
 const splitToggleBtn = document.getElementById('splitToggleBtn');
 const splitCard = document.getElementById('splitCard');
+const splitAccordion = document.getElementById('splitAccordion');
+const splitChevron = document.getElementById('splitChevron');
 const peopleSelect = document.getElementById('peopleSelect');
 const perPersonValue = document.getElementById('perPersonValue');
 const perPersonAlt = document.getElementById('perPersonAlt');
@@ -1241,6 +1369,7 @@ const historyWrap = document.getElementById('historyWrap');
 const historyList = document.getElementById('historyList');
 const clearBtn = document.getElementById('clearBtn');
 const rateFreshness = document.getElementById('rateFreshness');
+const rateGroup = document.getElementById('rateGroup');
 const refreshRateBtn = document.getElementById('refreshRateBtn');
 const rateWarningBanner = document.getElementById('rateWarningBanner');
 const rateWarningCloseBtn = document.getElementById('rateWarningCloseBtn');
@@ -1370,10 +1499,15 @@ function hexToRgba(hex, alpha) {
 }
 // Readable foreground text variant: only MXN/USD get the special accessible bright/dark
 // pairing already wired up via --green/--blue-fg; everything else falls back to var(--text).
+// Resolves to a concrete color value (not a nested var() reference) so this
+// can never again be broken by *where* the resulting custom property gets
+// set — reading body's own computed style means it's always correct for
+// whichever theme is currently active, full stop.
 function outputTextVarFor(isoCode) {
-  if (isoCode === 'MXN') return 'var(--green)';
-  if (isoCode === 'USD') return 'var(--blue-fg)';
-  return 'var(--text)';
+  const bodyStyle = getComputedStyle(document.body);
+  if (isoCode === 'MXN') return bodyStyle.getPropertyValue('--green').trim();
+  if (isoCode === 'USD') return bodyStyle.getPropertyValue('--blue-fg').trim();
+  return bodyStyle.getPropertyValue('--text').trim();
 }
 
 let selectedCodes = ['MXN', 'USD']; // [currency1, currency2]
@@ -1587,6 +1721,7 @@ priceInput.addEventListener('input', autoResizePriceInput);
 priceInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
+    priceInput.blur(); // dismiss the on-screen keyboard
     convertBtn.click();
   }
 });
@@ -1608,51 +1743,8 @@ addTermBtn.addEventListener('click', () => {
 
 // --- apply the active currency pair to all UI labels ---
 function renderToggleOptionText() {
-  optC1.textContent = (inputCurrency === 'c1' ? `${currency1.flag} ` : '') + currency1.name;
-  optC2.textContent = (inputCurrency === 'c2' ? `${currency2.flag} ` : '') + currency2.name;
-}
-
-// Keeps the toggle a fixed height regardless of which side is active. Since
-// only the active side shows its flag, the same name can wrap to a different
-// number of lines depending on which side it's on — this measures both
-// currencies in their "with flag" (worst-case, widest) form using real DOM
-// layout, and locks the track to whichever needs the most room, so toggling
-// back and forth never changes the height.
-let _toggleMeasurer = null;
-function syncToggleHeight() {
-  if (!_toggleMeasurer) {
-    _toggleMeasurer = document.createElement('div');
-    _toggleMeasurer.style.cssText = 'position:absolute; visibility:hidden; pointer-events:none; left:-9999px; top:-9999px;';
-    _toggleMeasurer.className = 'toggle-option';
-    document.body.appendChild(_toggleMeasurer);
-  }
-  const trackWidth = toggleTrack.clientWidth;
-  if (!trackWidth) return; // not laid out yet (e.g. panel still collapsed) — skip until it is
-  const optionWidth = (trackWidth - 12) / 2; // track has 6px padding each side, two equal flex children
-  _toggleMeasurer.style.width = optionWidth + 'px';
-
-  _toggleMeasurer.textContent = `${currency1.flag} ${currency1.name}`;
-  const h1 = _toggleMeasurer.scrollHeight;
-  _toggleMeasurer.textContent = `${currency2.flag} ${currency2.name}`;
-  const h2 = _toggleMeasurer.scrollHeight;
-
-  toggleTrack.style.minHeight = (Math.max(h1, h2) + 12) + 'px'; // +12 = track's own top+bottom padding
-}
-let _toggleSyncDebounce = null;
-function debouncedSyncToggleHeight() {
-  clearTimeout(_toggleSyncDebounce);
-  _toggleSyncDebounce = setTimeout(syncToggleHeight, 50);
-}
-window.addEventListener('resize', debouncedSyncToggleHeight);
-// ResizeObserver catches cases window.resize can miss — e.g. some browsers'
-// font-size/accessibility text scaling doesn't change window dimensions at
-// all, so no resize event fires, even though the toggle's content now needs
-// more or less room. Watching main-card (not toggleTrack itself) avoids a
-// feedback loop, since we're the ones setting toggleTrack's own height.
-if (typeof ResizeObserver !== 'undefined') {
-  const _toggleResizeObserver = new ResizeObserver(debouncedSyncToggleHeight);
-  const _glassContainer = document.querySelector('.main-card');
-  if (_glassContainer) _toggleResizeObserver.observe(_glassContainer);
+  optC1.textContent = `${currency1.flag} ${currency1.name}`;
+  optC2.textContent = `${currency2.flag} ${currency2.name}`;
 }
 
 function renderCurrencyLabels() {
@@ -1661,7 +1753,6 @@ function renderCurrencyLabels() {
   rateSuffix.textContent = currency1.isoCode;
   currencyMark.textContent = (inputCurrency === 'c1' ? currency1 : currency2).symbol;
   currenciesSummary.textContent = `${currency1.flag} ${currency1.isoCode} · ${currency2.flag} ${currency2.isoCode}`;
-  syncToggleHeight();
 }
 
 function setCurrency(side) {
@@ -1676,8 +1767,8 @@ function setCurrency(side) {
   renderToggleOptionText();
 
   const accent = CURRENCY_THEME[activeCode] || '#5a6570';
-  document.documentElement.style.setProperty('--input-accent', accent);
-  document.documentElement.style.setProperty('--input-bg', hexToRgba(accent, 0.14));
+  document.body.style.setProperty('--input-accent', accent);
+  document.body.style.setProperty('--input-bg', hexToRgba(accent, 0.14));
 }
 
 optC1.addEventListener('click', () => setCurrency('c1'));
@@ -1689,7 +1780,7 @@ function runConversion() {
     answerCard.style.display = 'none';
     answerRough.classList.remove('show');
     answerRough.innerHTML = '';
-    splitToggleBtn.style.display = 'none';
+    splitAccordion.style.display = 'none';
     splitCard.style.display = 'none';
     return null;
   }
@@ -1702,13 +1793,13 @@ function runConversion() {
   if (inputCurrency === 'c1') {
     result = amount / rate;
     label = `${currency2.flag} In ${currency2.name}`;
-    sub = `${breakdown}${amount.toFixed(2)} ${currency1.isoCode} at ${rate.toFixed(4)}`;
+    sub = `${breakdown}${amount.toFixed(2)} ${currency1.isoCode} at exchange rate ${rate.toFixed(4)}`;
     resultCode = currency2.code;
     resultDisplayCode = currency2.isoCode;
   } else {
     result = amount * rate;
     label = `${currency1.flag} In ${currency1.name}`;
-    sub = `${breakdown}${amount.toFixed(2)} ${currency2.isoCode} at ${rate.toFixed(4)}`;
+    sub = `${breakdown}${amount.toFixed(2)} ${currency2.isoCode} at exchange rate ${rate.toFixed(4)}`;
     resultCode = currency1.code;
     resultDisplayCode = currency1.isoCode;
   }
@@ -1728,14 +1819,13 @@ function runConversion() {
   }
 
   const outputAccent = CURRENCY_THEME[resultCode] || '#5a6570';
-  document.documentElement.style.setProperty('--output-accent', outputAccent);
-  document.documentElement.style.setProperty('--output-bg', hexToRgba(outputAccent, 0.14));
-  document.documentElement.style.setProperty('--output-text', outputTextVarFor(resultDisplayCode));
+  document.body.style.setProperty('--output-accent', outputAccent);
+  document.body.style.setProperty('--output-bg', hexToRgba(outputAccent, 0.14));
+  document.body.style.setProperty('--output-text', outputTextVarFor(resultDisplayCode));
 
   lastResultAmount = result;
   lastResultCurrencyCode = resultDisplayCode;
-  splitToggleBtn.style.display = 'block';
-  splitToggleBtn.textContent = `🧾 Split the bill`;
+  splitAccordion.style.display = 'block';
   if (splitCard.style.display === 'block') calculateSplit();
 
   return { amount, result };
@@ -1831,7 +1921,7 @@ tipCustomInput.addEventListener('input', () => {
 splitToggleBtn.addEventListener('click', () => {
   const isHidden = splitCard.style.display === 'none';
   splitCard.style.display = isHidden ? 'block' : 'none';
-  splitToggleBtn.textContent = isHidden ? `🧾 Hide split` : `🧾 Split the bill`;
+  splitChevron.classList.toggle('open', isHidden);
   if (isHidden) calculateSplit();
 });
 
@@ -1847,7 +1937,8 @@ clearAllBtn.addEventListener('click', () => {
   answerRough.classList.remove('show');
   answerRough.innerHTML = '';
   splitCard.style.display = 'none';
-  splitToggleBtn.style.display = 'none';
+  splitAccordion.style.display = 'none';
+  splitChevron.classList.remove('open');
   peopleSelect.value = 2;
   tipPct = 18;
   showBothCheckbox.checked = false;
@@ -1920,7 +2011,7 @@ async function fetchLiveRate() {
   checkRateStaleness();
 }
 
-refreshRateBtn.addEventListener('click', fetchLiveRate);
+rateGroup.addEventListener('click', fetchLiveRate);
 
 function addHistory(leftAmount, leftCode, rightAmount, rightCode) {
   history.unshift({leftAmount, leftCode, rightAmount, rightCode, time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})});
@@ -1951,7 +2042,7 @@ darkModeSwitch.addEventListener('click', () => {
   setTheme(!darkModeSwitch.classList.contains('on'));
 });
 
-// --- Background style: Dark (default) or Canadian Rainbow ---
+// --- Background style: Flat (default) or Rainbow ---
 const BACKGROUND_KEY = 'currencyConverter.background';
 const backgroundRow = document.getElementById('backgroundRow');
 const backgroundChevron = document.getElementById('backgroundChevron');
@@ -1963,7 +2054,7 @@ const bgOptionRainbow = document.getElementById('bgOptionRainbow');
 function applyBackground(choice, skipSave) {
   const isRainbow = choice === 'rainbow';
   document.body.classList.toggle('bg-rainbow', isRainbow);
-  backgroundSummary.textContent = isRainbow ? '🌈 Canadian Rainbow' : '🌑 Dark';
+  backgroundSummary.textContent = isRainbow ? '🌈 Rainbow' : '🍦 Basic & Flat';
   bgOptionDark.checked = !isRainbow;
   bgOptionRainbow.checked = isRainbow;
   if (!skipSave) {
@@ -2002,7 +2093,8 @@ function applyCurrencySelection(codeA, codeB) {
   autoResizePriceInput();
   answerCard.style.display = 'none';
   splitCard.style.display = 'none';
-  splitToggleBtn.style.display = 'none';
+  splitAccordion.style.display = 'none';
+  splitChevron.classList.remove('open');
   lastResultAmount = null;
   fetchLiveRate();
 }
@@ -2091,10 +2183,16 @@ const addCurrencyFlag = document.getElementById('addCurrencyFlag');
 const addCurrencySubmit = document.getElementById('addCurrencySubmit');
 const addCurrencyStatus = document.getElementById('addCurrencyStatus');
 
+const addCurrencyIcon = document.getElementById('addCurrencyIcon');
+const addCurrencyRowLabel = document.getElementById('addCurrencyRowLabel');
+const ADD_CURRENCY_PLUS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+const ADD_CURRENCY_CHEVRON_UP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>';
+
 addCurrencyRow.addEventListener('click', () => {
   const isOpen = addCurrencyForm.style.display === 'flex';
   addCurrencyForm.style.display = isOpen ? 'none' : 'flex';
-  addCurrencyRow.textContent = isOpen ? '+ Add a currency not listed' : '– Cancel';
+  addCurrencyIcon.innerHTML = isOpen ? ADD_CURRENCY_PLUS_ICON : ADD_CURRENCY_CHEVRON_UP_ICON;
+  addCurrencyRowLabel.textContent = isOpen ? 'Add a currency not listed' : 'Cancel';
   if (!isOpen) addCurrencyCode.focus();
 });
 
@@ -2183,10 +2281,13 @@ function openCurrencySelectorFromTop() {
   currenciesRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 const jumpToCurrencySettingsBtn = document.getElementById('jumpToCurrencySettingsBtn');
-jumpToCurrencySettingsBtn.addEventListener('click', openCurrencySelectorFromTop);
+jumpToCurrencySettingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openCurrencySelectorFromTop();
+});
 
 // --- About: version number + placeholder download URL + share ---
-const APP_VERSION = 'v1.1.0'; // bump this whenever you push a new version
+const APP_VERSION = 'v1.2.0'; // bump this whenever you push a new version
 const APP_DOWNLOAD_URL = 'https://msui.github.io/currency-converter/';
 
 const aboutRow = document.getElementById('aboutRow');
