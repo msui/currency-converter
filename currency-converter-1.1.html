@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Currency Converter</title>
+<style>
+  :root {
+    --bg: #000000;
+    --card: #121212;
+    --card-border: #2e2e2e;
+    --accent: #ce1126;
+    --accent-soft: rgba(206,17,38,0.15);
+    --text: #ffffff;
+    --text-dim: #c7c7c7;
+    --green: #2fa662;
+    --blue-fg: #5b8cff;
+    --flag-green: #006341;
+    --flag-red: #ce1126;
+    --us-blue: #0a3ebf;
+    --us-red: #b22234;
+    --toggle-bg: #1e1e1e;
+    --glass-bg: rgba(28, 28, 30, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.14);
+    --glass-sheen: rgba(255, 255, 255, 0.06);
+    --glass-shadow: rgba(0, 0, 0, 0.4);
+  }
+  body.light-mode {
+    --bg: #f4f6f7;
+    --card: #ffffff;
+    --card-border: #dbe3e8;
+    --text: #10171c;
+    --text-dim: #57626b;
+    --green: #157347;
+    --blue-fg: #0a3ebf;
+    --toggle-bg: #eef2f4;
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(16, 23, 28, 0.16);
+    --glass-sheen: rgba(255, 255, 255, 0.9);
+    --glass-shadow: rgba(16, 23, 28, 0.14);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding: 20px 16px 0;
+    transition: background 0.2s, color 0.2s;
+  }
+  /* "Canadian Rainbow" background — inspired by the $50 (red), $100 (orange),
+     $20 (olive/yellow-green), $5 (teal/blue), and $10 (violet) banknotes. */
+  body.bg-rainbow {
+    background: linear-gradient(160deg,
+      #8a1330 0%,
+      #a3521c 22%,
+      #55591f 45%,
+      #133f52 68%,
+      #3a205e 100%);
+    background-attachment: fixed;
+  }
+  body.light-mode.bg-rainbow {
+    background: linear-gradient(160deg,
+      #f6c3cf 0%,
+      #f6dcb0 22%,
+      #e4e8ad 45%,
+      #b9e2ea 68%,
+      #d8c9f0 100%);
+    background-attachment: fixed;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding-bottom: 0; }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 24px 0;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .rate-section {
+    background-color: transparent;
+    margin: 0 -16px 16px;
+    padding: 0 16px 8px;
+    transition: background 0.2s;
+  }
+  .rate-group {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .rate-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 54px;
+    padding: 10px 16px;
+    text-align: left;
+  }
+  .rate-line {
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 400;
+    text-align: left;
+  }
+  .rate-value-text { font-weight: 700; }
+  .rate-freshness { font-size: 12px; color: var(--text-dim); margin-top: 2px; text-align: left; }
+  .rate-freshness.live { color: var(--green); }
+  .rate-freshness.stale { color: #d4a24e; }
+  body.light-mode .rate-freshness.stale { color: #8a5a00; }
+  .top-rate-banner {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border-bottom: 1px solid var(--glass-border);
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: -16px;
+    box-sizing: border-box;
+  }
+  .top-rate-banner-inner {
+    width: calc(100vw - 32px);
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .top-rate-banner-icon { flex-shrink: 0; font-size: 15px; }
+  .top-rate-banner-text {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: #d4a24e;
+    line-height: 1.4;
+  }
+  body.light-mode .top-rate-banner-text { color: #8a5a00; }
+  .top-rate-banner-close {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(120, 120, 128, 0.24);
+    color: #c7c7c7;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .top-rate-banner-close:active { transform: scale(0.92); }
+  body.light-mode .top-rate-banner-close { color: #57626b; }
+  .refresh-btn {
+    background: rgba(120, 120, 128, 0.24);
+    border: none;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .refresh-btn:active { background: rgba(120, 120, 128, 0.38); transform: scale(0.92); }
+  .refresh-btn svg { width: 16px; height: 16px; stroke-width: 2.25; }
+  .rate-btn-group { display: flex; gap: 8px; flex-shrink: 0; }
+  .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .main-card {
+    background-color: var(--glass-bg);
+    background-image: linear-gradient(var(--input-bg, transparent), var(--input-bg, transparent));
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    padding: 24px 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
+    transition: border-color 0.2s, background-image 0.2s;
+  }
+  .field-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+
+  /* Single price input */
+  .price-input-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
+    border-bottom: 1px solid var(--card-border);
+    padding: 14px 0 20px;
+    min-height: 64px;
+    position: relative;
+  }
+  .add-term-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(120, 120, 128, 0.24);
+    color: var(--text-dim);
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .add-term-btn:active { background: rgba(120, 120, 128, 0.38); transform: translateY(-50%) scale(0.92); }
+  .price-hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    margin-bottom: 4px;
+    min-height: 14px;
+  }
+  .price-hint-total { color: var(--text); font-weight: 700; }
+  .currency-mark {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding-top: 6px;
+    line-height: 1.15;
+  }
+  #priceInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 48px;
+    font-weight: 700;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    width: 100%;
+    min-width: 0;
+    padding: 6px 44px 6px 0;
+    text-align: left;
+    line-height: 1.15;
+    resize: none;
+    overflow: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  #priceInput::-webkit-outer-spin-button,
+  #priceInput::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  #priceInput:focus { outline: none; }
+
+  /* Currency toggle slider */
+  .toggle-section {
+    margin-top: 22px;
+  }
+  .toggle-track {
+    position: relative;
+    background: var(--toggle-bg);
+    border: 1.5px solid var(--input-accent, var(--text-dim));
+    border-radius: 999px;
+    padding: 6px;
+    display: flex;
+    min-height: 56px;
+    transition: border-color 0.2s;
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 6px;
+    width: calc(50% - 6px);
+    background: var(--input-accent, var(--flag-red));
+    border-radius: 999px;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+    z-index: 1;
+  }
+  .toggle-track.c2 .toggle-thumb {
+    transform: translateX(100%);
+  }
+  .toggle-option {
+    flex: 1;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.25s;
+    text-align: center;
+    padding: 10px 4px;
+    line-height: 1.25;
+  }
+  .toggle-option.active { color: #ffffff; }
+
+  .convert-btn,
+  .split-btn,
+  .clear-all-btn,
+  .tipcalc-clear-btn,
+  .tipcalc-minimize-btn {
+    width: 100%;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0 16px;
+  }
+
+  .convert-btn {
+    background: #ffffff;
+    color: #10171c;
+    border: none;
+    margin-top: 20px;
+  }
+  .convert-btn:active { transform: scale(0.98); }
+
+  .answer-card {
+    background-color: var(--glass-bg);
+    background-image: linear-gradient(var(--output-bg, transparent), var(--output-bg, transparent));
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid var(--output-accent, var(--glass-border));
+    border-radius: 18px;
+    padding: 24px 18px;
+    margin-bottom: 16px;
+    text-align: left;
+    display: none;
+    box-shadow: 0 8px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
+  }
+  .answer-label {
+    font-size: 16px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .answer-value-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .answer-currency-mark {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--output-text, var(--green));
+    flex-shrink: 0;
+    white-space: nowrap;
+    line-height: 1.1;
+  }
+  .answer-value {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--output-text, var(--green));
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.1;
+  }
+  .answer-sub {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .answer-rough {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    display: none;
+  }
+  .answer-rough.show { display: block; }
+  .answer-rough-label {
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--output-text, var(--green));
+  }
+
+  .split-btn {
+    background: #ffffff;
+    color: #3a3a3c;
+    border: 1px solid var(--flag-green);
+    margin-bottom: 16px;
+  }
+  .split-btn:active { transform: scale(0.98); }
+
+  .split-card {
+    background: #ffffff;
+    border: 1px solid #e2e8ec;
+    border-radius: 18px;
+    padding: 22px 18px;
+    margin-bottom: 16px;
+  }
+  .split-card .field-label { color: #6b7680; }
+  .split-controls {
+    padding-bottom: 18px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid #e2e8ec;
+  }
+  .people-select {
+    width: 100%;
+    background: #f2f6f8;
+    border: 1px solid #dbe3e8;
+    color: #10171c;
+    font-size: 18px;
+    font-weight: 700;
+    font-family: inherit;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23516170' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 18px;
+  }
+  .people-select:focus {
+    outline: none;
+    border-color: #10171c;
+    box-shadow: 0 0 0 1.5px #10171c;
+  }
+  .split-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8ec;
+    font-size: 15px;
+  }
+  .split-row:last-of-type { border-bottom: none; }
+  .split-row-label { color: #6b7680; }
+  .split-row-value { font-weight: 400; font-size: 16px; color: #5a6570; text-align: right; }
+  .split-row-value.total { font-weight: 800; font-size: 19px; color: #10171c; }
+  .split-row-values {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .split-row-alt {
+    font-size: 12px;
+    color: #aab2b9;
+    font-weight: 600;
+    margin-top: 2px;
+    display: none;
+    text-align: right;
+  }
+  .split-card.show-both .split-row-alt { display: block; }
+  .show-both-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7680;
+    cursor: pointer;
+  }
+  .show-both-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #3a3a3c;
+    flex-shrink: 0;
+  }
+  .breakdown-heading {
+    font-size: 11px;
+    font-weight: 700;
+    color: #10171c;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 4px;
+  }
+  .breakdown-divider {
+    height: 2px;
+    background: #10171c;
+    border-radius: 2px;
+    margin: 18px 0 16px;
+    opacity: 0.85;
+  }
+  .split-row:has(+ .breakdown-divider) { border-bottom: none; }
+  .copy-summary-btn {
+    width: 100%;
+    height: 46px;
+    border-radius: 12px;
+    border: 1.5px solid #10171c;
+    background: #ffffff;
+    color: #10171c;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 18px;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+  }
+  .copy-summary-btn:active { transform: scale(0.98); }
+  .copy-summary-btn.copied { background: var(--flag-green); border-color: var(--flag-green); color: #ffffff; }
+  .tip-tabs {
+    display: flex;
+    background: #f2f6f8;
+    border: 1px solid #dbe3e8;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 0;
+  }
+  .tip-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    padding: 12px 1px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7680;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .tip-custom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f2f6f8;
+    border: 1px solid #dbe3e8;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-top: 8px;
+  }
+  .tip-custom-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-size: 17px;
+    font-weight: 700;
+    color: #10171c;
+    font-family: inherit;
+    min-width: 0;
+  }
+  .tip-custom-input:focus { outline: none; }
+  .tip-custom-input::-webkit-outer-spin-button,
+  .tip-custom-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .tip-custom-suffix { font-size: 17px; font-weight: 700; color: #6b7680; }
+  .tip-tab.active {
+    background: #10171c;
+    color: #ffffff;
+  }
+  .tip-tab:active { transform: scale(0.97); }
+  .tip-tab:focus { outline: none; }
+  .clear-all-btn {
+    border: none;
+    background: var(--flag-red);
+    color: #ffffff;
+    margin-top: 12px;
+    margin-bottom: 16px;
+  }
+  .clear-all-btn:active { transform: scale(0.98); }
+
+  /* --- USD mode: American flag colors (red, white, blue) --- */
+  body.usd-mode .toggle-option.active { color: #ffffff; }
+  body.usd-mode .split-btn { border-color: var(--us-blue); }
+
+  .history {
+    margin-top: 8px;
+  }
+  .history-title {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 20px 0 8px;
+  }
+  .history-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--card-border);
+    font-size: 14px;
+  }
+  .history-item .left {
+    color: var(--text-dim);
+    overflow-wrap: anywhere;
+  }
+  .history-item .right {
+    color: var(--green);
+    font-weight: 600;
+    text-align: right;
+    flex-shrink: 0;
+    overflow-wrap: anywhere;
+  }
+  .clear-btn {
+    display: block;
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    opacity: 0.6;
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+
+  /* --- iOS-style settings footer --- */
+  .settings-footer {
+    background: #000000;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 32px;
+    margin-bottom: 0;
+    box-sizing: border-box;
+    transition: background 0.2s;
+  }
+  body.light-mode .settings-footer { background: #2c2c2e; }
+  .settings-footer-inner {
+    width: calc(100vw - 32px);
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 8px 0 40px;
+    box-sizing: border-box;
+  }
+  .settings-group {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 54px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #2c2c2e;
+    cursor: pointer;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-label { font-size: 16px; color: #ffffff; font-weight: 400; }
+  .settings-row-value {
+    font-size: 15px;
+    color: #b0b0b5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .settings-chevron {
+    color: #57575a;
+    font-size: 18px;
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  .settings-chevron.open { transform: rotate(90deg); }
+
+  /* iOS switch */
+  .ios-switch {
+    width: 51px;
+    height: 31px;
+    border-radius: 16px;
+    background: #39393d;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    border: none;
+    padding: 0;
+  }
+  .ios-switch.on { background: #34c759; }
+  .ios-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #ffffff;
+    transition: transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .ios-switch.on .ios-switch-knob { transform: translateX(20px); }
+
+  .currency-panel {
+    background: #242426;
+    padding: 6px 0;
+    display: none;
+    border-top: 1px solid #2c2c2e;
+    border-bottom: 1px solid #2c2c2e;
+  }
+  .currency-panel.open { display: block; }
+  .currency-hint {
+    font-size: 12px;
+    color: #8a8a8e;
+    padding: 8px 16px 4px;
+  }
+  .background-panel {
+    background: #242426;
+    padding: 6px 0;
+    display: none;
+    border-top: 1px solid #2c2c2e;
+    border-bottom: 1px solid #2c2c2e;
+  }
+  .background-panel.open { display: block; }
+  .background-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #2c2c2e;
+  }
+  .background-option:last-child { border-bottom: none; }
+  .background-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #10171c;
+    flex-shrink: 0;
+  }
+  .background-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .background-swatch-dark { background: #000000; }
+  .background-swatch-rainbow {
+    background: linear-gradient(160deg, #8a1330 0%, #a3521c 22%, #55591f 45%, #133f52 68%, #3a205e 100%);
+  }
+  .background-option-label { font-size: 15px; color: #ffffff; font-weight: 600; }
+  .currency-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 16px;
+    border-bottom: 1px solid #2c2c2e;
+  }
+  .currency-row:last-child { border-bottom: none; }
+  .currency-row.disabled { opacity: 0.35; }
+  .currency-row input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    accent-color: #3a3a3c;
+    flex-shrink: 0;
+  }
+  .currency-row-label {
+    font-size: 15px;
+    color: #ffffff;
+    flex: 1;
+  }
+  .currency-row-code {
+    font-size: 12px;
+    color: #8a8a8e;
+    font-weight: 700;
+  }
+  .add-currency-row {
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--flag-green);
+    cursor: pointer;
+    border-top: 1px solid #2c2c2e;
+  }
+  .add-currency-form {
+    padding: 8px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .add-currency-input {
+    background: #2c2c2e;
+    border: 1px solid #3a3a3c;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+    color: #ffffff;
+    font-family: inherit;
+  }
+  .add-currency-input::placeholder { color: #8a8a8e; }
+  .add-currency-input:focus { outline: none; border-color: var(--flag-green); }
+  .add-currency-flag-input { width: 70px; text-align: center; }
+  .add-currency-submit {
+    height: 44px;
+    border-radius: 10px;
+    border: none;
+    background: var(--flag-green);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .add-currency-submit:active { transform: scale(0.98); }
+  .add-currency-submit:disabled { opacity: 0.5; cursor: default; }
+  .add-currency-status {
+    font-size: 13px;
+    color: #8a8a8e;
+    min-height: 16px;
+  }
+  .add-currency-status.error { color: #e0645a; }
+  .add-currency-status.success { color: var(--flag-green); }
+
+  .about-panel {
+    background: #242426;
+    padding: 14px 16px 16px;
+    display: none;
+    border-top: 1px solid #2c2c2e;
+    border-bottom: 1px solid #2c2c2e;
+  }
+  .about-panel.open { display: block; }
+  .about-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #2c2c2e;
+  }
+  .about-row:last-of-type { border-bottom: none; }
+  .about-row-label { font-size: 14px; color: #8a8a8e; flex-shrink: 0; }
+  .about-row-value { font-size: 14px; color: #ffffff; font-weight: 700; }
+  .about-url-row { align-items: flex-start; }
+  .about-url {
+    font-size: 13px;
+    color: #ffffff;
+    text-align: right;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .about-share-btn {
+    width: 100%;
+    height: 46px;
+    border-radius: 12px;
+    border: none;
+    background: #3a3a3c;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 14px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .about-share-btn:active { transform: scale(0.98); }
+  .about-share-btn.copied { background: var(--flag-green); }
+
+  /* --- Standalone Tip Calculator: inline expandable panel --- */
+  .tipcalc-panel {
+    background: #f2f6f8;
+    border-radius: 14px;
+    margin-top: 10px;
+    display: none;
+  }
+  .tipcalc-panel.open { display: block; }
+  .tipcalc-body { padding: 14px 12px 14px; }
+  .tipcalc-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .tipcalc-clear-btn { border: none; background: var(--flag-red); color: #ffffff; }
+  .tipcalc-minimize-btn { background: #10171c; color: #ffffff; border: none; }
+  .tipcalc-clear-btn:active,
+  .tipcalc-minimize-btn:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+<div class="top-rate-banner" id="rateWarningBanner" style="display:none;">
+  <div class="top-rate-banner-inner">
+    <span class="top-rate-banner-icon">⚠️</span>
+    <span class="top-rate-banner-text">This rate hasn't refreshed in over 12 hours — tap refresh below for the latest.</span>
+    <button class="top-rate-banner-close" id="rateWarningCloseBtn" aria-label="Dismiss">✕</button>
+  </div>
+</div>
+<div class="wrap">
+  <h1 style="text-align: center;">Currency Converter</h1>
+
+  <div class="rate-section">
+    <div class="rate-group">
+      <div class="answer-label" style="padding: 14px 16px 0;">Exchange Rate</div>
+      <div class="rate-row">
+        <div>
+          <div class="rate-line"><span id="rateEqualsLabel">1 USD =</span> <span id="rateValueText" class="rate-value-text">17.47</span> <span id="rateSuffix">MXN</span></div>
+          <div class="rate-freshness" id="rateFreshness">checking…</div>
+        </div>
+        <div class="rate-btn-group">
+          <button id="refreshRateBtn" class="refresh-btn" title="Refresh rate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+          <button id="jumpToCurrencySettingsBtn" class="refresh-btn" title="Change currencies">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-card">
+    <div class="answer-label" style="margin-bottom: 10px;">Enter a price</div>
+    <div class="price-input-row" id="priceInputRow">
+      <span class="currency-mark" id="currencyMark">$</span>
+      <textarea id="priceInput" placeholder="0" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" rows="1">1</textarea>
+      <button type="button" id="addTermBtn" class="add-term-btn" title="Add another amount">+</button>
+    </div>
+    <div class="price-hint" id="priceHint"></div>
+
+    <div class="toggle-section">
+      <div class="toggle-track" id="toggleTrack">
+        <div class="toggle-thumb"></div>
+        <div class="toggle-option active" id="optC1" data-currency="c1">🇲🇽 Pesos</div>
+        <div class="toggle-option" id="optC2" data-currency="c2">🇺🇸 Dollars</div>
+      </div>
+    </div>
+
+    <button class="convert-btn" id="convertBtn">Convert</button>
+    <button class="clear-all-btn" id="clearAllBtn">Clear everything</button>
+  </div>
+
+  <div class="answer-card" id="answerCard">
+    <div class="answer-label" id="answerLabel">In US dollars</div>
+    <div class="answer-value-row">
+      <span class="answer-currency-mark" id="answerCurrencyMark">$</span>
+      <span class="answer-value" id="answerValue">0.00</span>
+    </div>
+    <div class="answer-sub" id="answerSub"></div>
+    <div class="answer-rough" id="answerRough"></div>
+  </div>
+
+  <button class="split-btn" id="splitToggleBtn" style="display:none;">Split the bill</button>
+
+  <div class="split-card" id="splitCard" style="display:none;">
+    <div class="split-controls">
+      <div class="field-label">Number of people</div>
+      <select id="peopleSelect" class="people-select">
+        <!-- options injected by JS: 1-20 -->
+      </select>
+
+      <div class="field-label">Tip percentage</div>
+      <div class="tip-tabs" id="tipTabs">
+        <button class="tip-tab" data-pct="0">0%</button>
+        <button class="tip-tab" data-pct="10">10%</button>
+        <button class="tip-tab" data-pct="15">15%</button>
+        <button class="tip-tab active" data-pct="18">18%</button>
+        <button class="tip-tab" data-pct="20">20%</button>
+        <button class="tip-tab" data-pct="custom">Custom</button>
+      </div>
+      <div class="tip-custom-row" id="tipCustomRow" style="display:none;">
+        <input type="number" id="tipCustomInput" class="tip-custom-input" placeholder="Enter a percentage" inputmode="decimal" min="0">
+        <span class="tip-custom-suffix">%</span>
+      </div>
+
+      <label class="show-both-row">
+        <input type="checkbox" id="showBothCheckbox">
+        <span>Show both currencies</span>
+      </label>
+    </div>
+
+    <div class="split-breakdown">
+      <div class="breakdown-heading">What each person owes</div>
+      <div class="split-row">
+        <span class="split-row-label">Per person</span>
+        <span class="split-row-values">
+          <span class="split-row-value" id="perPersonValue">$0.00</span>
+          <span class="split-row-alt" id="perPersonAlt"></span>
+        </span>
+      </div>
+      <div class="split-row">
+        <span class="split-row-label" id="tipPerPersonLabel">Tip per person (18%)</span>
+        <span class="split-row-values">
+          <span class="split-row-value" id="tipPerPersonValue">$0.00</span>
+          <span class="split-row-alt" id="tipPerPersonAlt"></span>
+        </span>
+      </div>
+      <div class="split-row">
+        <span class="split-row-label">Total with tip, per person</span>
+        <span class="split-row-values">
+          <span class="split-row-value total" id="totalWithTipPerPersonValue">$0.00</span>
+          <span class="split-row-alt" id="totalWithTipPerPersonAlt"></span>
+        </span>
+      </div>
+
+      <div class="breakdown-divider"></div>
+
+      <div class="breakdown-heading">What the group owes</div>
+      <div class="split-row">
+        <span class="split-row-label" id="tipTotalLabel">Tip total (18%)</span>
+        <span class="split-row-values">
+          <span class="split-row-value" id="tipTotalValue">$0.00</span>
+          <span class="split-row-alt" id="tipTotalAlt"></span>
+        </span>
+      </div>
+      <div class="split-row">
+        <span class="split-row-label">Total with tip</span>
+        <span class="split-row-values">
+          <span class="split-row-value total" id="totalWithTipValue">$0.00</span>
+          <span class="split-row-alt" id="totalWithTipAlt"></span>
+        </span>
+      </div>
+
+      <button class="copy-summary-btn" id="copySplitBtn">📋 Copy Summary</button>
+    </div>
+  </div>
+
+  <div class="history" id="historyWrap" style="display:none;">
+    <div class="history-title">Recent conversions</div>
+    <div id="historyList"></div>
+    <button class="clear-btn" id="clearBtn">Clear history</button>
+  </div>
+
+  <div class="settings-footer">
+    <div class="settings-footer-inner">
+    <div class="answer-label" id="settingsTitleInGroup" style="padding: 16px 4px 8px; color: #c7c7c7;">Settings</div>
+    <div class="settings-group">
+      <div class="settings-row" id="currenciesRow">
+        <span class="settings-row-label">Currency selector</span>
+        <span class="settings-row-value">
+          <span id="currenciesSummary">🇲🇽 MXN · 🇺🇸 USD</span>
+          <span class="settings-chevron" id="currenciesChevron">›</span>
+        </span>
+      </div>
+
+      <div class="currency-panel" id="currencyPanel">
+        <div class="currency-hint" id="currencyHint">Select exactly 2 currencies · 2/2 selected</div>
+        <div id="currencyList"></div>
+        <div class="add-currency-row" id="addCurrencyRow">+ Add a currency not listed</div>
+        <div class="add-currency-form" id="addCurrencyForm" style="display:none;">
+          <input type="text" id="addCurrencyCode" class="add-currency-input" placeholder="Code (e.g. THB)" maxlength="3" autocapitalize="characters" autocomplete="off">
+          <input type="text" id="addCurrencyName" class="add-currency-input" placeholder="Name (e.g. Thai Baht)" autocomplete="off">
+          <input type="text" id="addCurrencyFlag" class="add-currency-input add-currency-flag-input" placeholder="🏳️" maxlength="4" autocomplete="off">
+          <button class="add-currency-submit" id="addCurrencySubmit">Check & add</button>
+          <div class="add-currency-status" id="addCurrencyStatus"></div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <span class="settings-row-label">Dark Mode</span>
+        <button class="ios-switch on" id="darkModeSwitch" role="switch" aria-checked="true" aria-label="Dark Mode">
+          <span class="ios-switch-knob"></span>
+        </button>
+      </div>
+
+      <div class="settings-row" id="backgroundRow">
+        <span class="settings-row-label">Background</span>
+        <span class="settings-row-value">
+          <span id="backgroundSummary">🌑 Dark</span>
+          <span class="settings-chevron" id="backgroundChevron">›</span>
+        </span>
+      </div>
+
+      <div class="background-panel" id="backgroundPanel">
+        <label class="background-option">
+          <input type="radio" name="bgOption" value="dark" id="bgOptionDark" checked>
+          <span class="background-swatch background-swatch-dark"></span>
+          <span class="background-option-label">🌑 Dark</span>
+        </label>
+        <label class="background-option">
+          <input type="radio" name="bgOption" value="rainbow" id="bgOptionRainbow">
+          <span class="background-swatch background-swatch-rainbow"></span>
+          <span class="background-option-label">🌈 Canadian Rainbow</span>
+        </label>
+      </div>
+
+      <div class="settings-row" id="aboutRow">
+        <span class="settings-row-label">About</span>
+        <span class="settings-row-value">
+          <span id="aboutVersionSummary">v1.0.0</span>
+          <span class="settings-chevron" id="aboutChevron">›</span>
+        </span>
+      </div>
+
+      <div class="about-panel" id="aboutPanel">
+        <div class="about-row">
+          <span class="about-row-label">Version</span>
+          <span class="about-row-value" id="aboutVersionValue">v1.0.0</span>
+        </div>
+        <div class="about-row about-url-row">
+          <span class="about-row-label">Download</span>
+          <span class="about-url" id="aboutUrl">https://github.com/your-username/currency-converter</span>
+        </div>
+        <button class="about-share-btn" id="aboutShareBtn">📤 Share this web app</button>
+      </div>
+
+      <div class="settings-row" id="tipCalcRow">
+        <span class="settings-row-label">Tip Calculator</span>
+        <span class="settings-row-value">
+          <span>🔢</span>
+          <span class="settings-chevron" id="tipCalcChevron">›</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="tipcalc-panel" id="tipCalcPanel">
+      <div class="tipcalc-body">
+        <div class="split-card" id="tipCalcCard" style="margin-top: 0; margin-bottom: 0;">
+          <div class="field-label">Bill amount</div>
+          <div class="price-input-row" style="border-bottom: 1px solid #e2e8ec; padding: 4px 0 16px;">
+            <span class="currency-mark" style="font-size: 36px; color: #6b7680;">$</span>
+            <input type="text" id="tipCalcAmount" placeholder="0" inputmode="decimal" autocomplete="off" style="font-size: 36px; background: transparent; border: none; color: #10171c; font-weight: 700; font-family: inherit; width: 100%; padding: 4px 0;">
+          </div>
+
+          <div class="split-controls" style="margin-top: 18px;">
+            <div class="field-label">Number of people</div>
+            <select id="tipCalcPeople" class="people-select"></select>
+
+            <div class="field-label">Tip percentage</div>
+            <div class="tip-tabs" id="tipCalcTabs">
+              <button class="tip-tab" data-pct="0">0%</button>
+              <button class="tip-tab" data-pct="10">10%</button>
+              <button class="tip-tab" data-pct="15">15%</button>
+              <button class="tip-tab active" data-pct="18">18%</button>
+              <button class="tip-tab" data-pct="20">20%</button>
+              <button class="tip-tab" data-pct="custom">Custom</button>
+            </div>
+            <div class="tip-custom-row" id="tipCalcCustomRow" style="display:none;">
+              <input type="number" id="tipCalcCustomInput" class="tip-custom-input" placeholder="Enter a percentage" inputmode="decimal" min="0">
+              <span class="tip-custom-suffix">%</span>
+            </div>
+          </div>
+
+          <div class="split-breakdown">
+            <div class="breakdown-heading">What each person owes</div>
+            <div class="split-row">
+              <span class="split-row-label">Per person</span>
+              <span class="split-row-value" id="tipCalcPerPerson">$0.00</span>
+            </div>
+            <div class="split-row">
+              <span class="split-row-label" id="tipCalcTipPerPersonLabel">Tip per person (18%)</span>
+              <span class="split-row-value" id="tipCalcTipPerPerson">$0.00</span>
+            </div>
+            <div class="split-row">
+              <span class="split-row-label">Total with tip, per person</span>
+              <span class="split-row-value total" id="tipCalcTotalPerPerson">$0.00</span>
+            </div>
+
+            <div class="breakdown-divider"></div>
+
+            <div class="breakdown-heading">What the group owes</div>
+            <div class="split-row">
+              <span class="split-row-label" id="tipCalcTipTotalLabel">Tip total (18%)</span>
+              <span class="split-row-value" id="tipCalcTipTotal">$0.00</span>
+            </div>
+            <div class="split-row">
+              <span class="split-row-label">Total with tip</span>
+              <span class="split-row-value total" id="tipCalcTotal">$0.00</span>
+            </div>
+
+            <button class="copy-summary-btn" id="copyTipCalcBtn">📋 Copy Summary</button>
+          </div>
+        </div>
+
+        <div class="tipcalc-actions">
+          <button class="tipcalc-clear-btn" id="tipCalcClearBtn">Clear tip calculator</button>
+          <button class="tipcalc-minimize-btn" id="tipCalcMinimizeBtn">Close</button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const rateValueText = document.getElementById('rateValueText');
+const rateEqualsLabel = document.getElementById('rateEqualsLabel');
+const rateSuffix = document.getElementById('rateSuffix');
+const priceInput = document.getElementById('priceInput');
+const priceInputRow = document.getElementById('priceInputRow');
+const addTermBtn = document.getElementById('addTermBtn');
+const priceHint = document.getElementById('priceHint');
+const currencyMark = document.getElementById('currencyMark');
+const toggleTrack = document.getElementById('toggleTrack');
+const optC1 = document.getElementById('optC1');
+const optC2 = document.getElementById('optC2');
+const convertBtn = document.getElementById('convertBtn');
+const answerCard = document.getElementById('answerCard');
+const answerLabel = document.getElementById('answerLabel');
+const answerValue = document.getElementById('answerValue');
+const answerCurrencyMark = document.getElementById('answerCurrencyMark');
+const answerSub = document.getElementById('answerSub');
+const answerRough = document.getElementById('answerRough');
+const splitToggleBtn = document.getElementById('splitToggleBtn');
+const splitCard = document.getElementById('splitCard');
+const peopleSelect = document.getElementById('peopleSelect');
+const perPersonValue = document.getElementById('perPersonValue');
+const perPersonAlt = document.getElementById('perPersonAlt');
+const tipTabs = document.getElementById('tipTabs');
+const tipTotalLabel = document.getElementById('tipTotalLabel');
+const tipPerPersonLabel = document.getElementById('tipPerPersonLabel');
+const tipTotalValue = document.getElementById('tipTotalValue');
+const tipTotalAlt = document.getElementById('tipTotalAlt');
+const tipPerPersonValue = document.getElementById('tipPerPersonValue');
+const tipPerPersonAlt = document.getElementById('tipPerPersonAlt');
+const totalWithTipValue = document.getElementById('totalWithTipValue');
+const totalWithTipAlt = document.getElementById('totalWithTipAlt');
+const totalWithTipPerPersonValue = document.getElementById('totalWithTipPerPersonValue');
+const totalWithTipPerPersonAlt = document.getElementById('totalWithTipPerPersonAlt');
+const showBothCheckbox = document.getElementById('showBothCheckbox');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const historyWrap = document.getElementById('historyWrap');
+const historyList = document.getElementById('historyList');
+const clearBtn = document.getElementById('clearBtn');
+const rateFreshness = document.getElementById('rateFreshness');
+const refreshRateBtn = document.getElementById('refreshRateBtn');
+const rateWarningBanner = document.getElementById('rateWarningBanner');
+const rateWarningCloseBtn = document.getElementById('rateWarningCloseBtn');
+let lastRateFetchTime = null; // null = never successfully refreshed this session
+let rateWarningDismissed = false; // reset automatically once the rate is fresh again
+const STALE_RATE_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+function checkRateStaleness() {
+  const isStale = lastRateFetchTime === null || (Date.now() - lastRateFetchTime) > STALE_RATE_MS;
+  if (!isStale) {
+    rateWarningDismissed = false; // fresh again — a future staleness should show it once more
+    rateWarningBanner.style.display = 'none';
+    return;
+  }
+  rateWarningBanner.style.display = rateWarningDismissed ? 'none' : 'block';
+}
+rateWarningCloseBtn.addEventListener('click', () => {
+  rateWarningDismissed = true;
+  rateWarningBanner.style.display = 'none';
+});
+// Re-check periodically so the warning appears on its own if the page is
+// left open past the 12-hour mark, without requiring another refresh tap.
+setInterval(checkRateStaleness, 5 * 60 * 1000);
+const darkModeSwitch = document.getElementById('darkModeSwitch');
+const currenciesRow = document.getElementById('currenciesRow');
+const currenciesSummary = document.getElementById('currenciesSummary');
+const currenciesChevron = document.getElementById('currenciesChevron');
+const currencyPanel = document.getElementById('currencyPanel');
+const currencyHint = document.getElementById('currencyHint');
+const currencyListEl = document.getElementById('currencyList');
+
+// --- Top 15 most-traded world currencies ---
+const CURRENCIES = [
+  { code: 'USD', isoCode: 'USD', name: 'US Dollar',          flag: '🇺🇸', symbol: '$', plural: 'US Dollars' },
+  { code: 'EUR', isoCode: 'EUR', name: 'Euro',                flag: '🇪🇺', symbol: '€', plural: 'Euros' },
+  { code: 'EUR-ES', isoCode: 'EUR', name: 'Spain (Euro)',     flag: '🇪🇸', symbol: '€', plural: 'Euros' },
+  { code: 'EUR-FR', isoCode: 'EUR', name: 'France (Euro)',    flag: '🇫🇷', symbol: '€', plural: 'Euros' },
+  { code: 'JPY', isoCode: 'JPY', name: 'Japanese Yen',        flag: '🇯🇵', symbol: '¥', plural: 'Japanese Yen' },
+  { code: 'GBP', isoCode: 'GBP', name: 'British Pound',       flag: '🇬🇧', symbol: '£', plural: 'British Pounds' },
+  { code: 'CNY', isoCode: 'CNY', name: 'Chinese Yuan',        flag: '🇨🇳', symbol: '¥', plural: 'Chinese Yuan' },
+  { code: 'AUD', isoCode: 'AUD', name: 'Australian Dollar',   flag: '🇦🇺', symbol: '$', plural: 'Australian Dollars' },
+  { code: 'CAD', isoCode: 'CAD', name: 'Canadian Dollar',     flag: '🇨🇦', symbol: '$', plural: 'Canadian Dollars' },
+  { code: 'CHF', isoCode: 'CHF', name: 'Swiss Franc',         flag: '🇨🇭', symbol: 'Fr', plural: 'Swiss Francs' },
+  { code: 'HKD', isoCode: 'HKD', name: 'Hong Kong Dollar',    flag: '🇭🇰', symbol: '$', plural: 'Hong Kong Dollars' },
+  { code: 'SGD', isoCode: 'SGD', name: 'Singapore Dollar',    flag: '🇸🇬', symbol: '$', plural: 'Singapore Dollars' },
+  { code: 'SEK', isoCode: 'SEK', name: 'Swedish Krona',       flag: '🇸🇪', symbol: 'kr', plural: 'Swedish Krona' },
+  { code: 'KRW', isoCode: 'KRW', name: 'South Korean Won',    flag: '🇰🇷', symbol: '₩', plural: 'South Korean Won' },
+  { code: 'NOK', isoCode: 'NOK', name: 'Norwegian Krone',     flag: '🇳🇴', symbol: 'kr', plural: 'Norwegian Krone' },
+  { code: 'NZD', isoCode: 'NZD', name: 'New Zealand Dollar',  flag: '🇳🇿', symbol: '$', plural: 'New Zealand Dollars' },
+  { code: 'MXN', isoCode: 'MXN', name: 'Mexican Peso',        flag: '🇲🇽', symbol: '$', plural: 'Mexican Pesos' },
+  { code: 'THB', isoCode: 'THB', name: 'Thai Baht',           flag: '🇹🇭', symbol: '฿', plural: 'Thai Baht' },
+  { code: 'IDR', isoCode: 'IDR', name: 'Indonesian Rupiah',   flag: '🇮🇩', symbol: 'Rp', plural: 'Indonesian Rupiah' },
+  { code: 'VND', isoCode: 'VND', name: 'Vietnamese Dong',     flag: '🇻🇳', symbol: '₫', plural: 'Vietnamese Dong' },
+  { code: 'PHP', isoCode: 'PHP', name: 'Philippine Peso',     flag: '🇵🇭', symbol: '₱', plural: 'Philippine Pesos' },
+  { code: 'MYR', isoCode: 'MYR', name: 'Malaysian Ringgit',   flag: '🇲🇾', symbol: 'RM', plural: 'Malaysian Ringgit' },
+  { code: 'INR', isoCode: 'INR', name: 'Indian Rupee',        flag: '🇮🇳', symbol: '₹', plural: 'Indian Rupees' },
+  { code: 'AED', isoCode: 'AED', name: 'UAE Dirham',          flag: '🇦🇪', symbol: 'د.إ', plural: 'UAE Dirhams' },
+  { code: 'ZAR', isoCode: 'ZAR', name: 'South African Rand',  flag: '🇿🇦', symbol: 'R', plural: 'South African Rand' },
+  { code: 'BRL', isoCode: 'BRL', name: 'Brazilian Real',      flag: '🇧🇷', symbol: 'R$', plural: 'Brazilian Real' },
+  { code: 'ARS', isoCode: 'ARS', name: 'Argentine Peso',      flag: '🇦🇷', symbol: '$', plural: 'Argentine Pesos' },
+  { code: 'TRY', isoCode: 'TRY', name: 'Turkish Lira',        flag: '🇹🇷', symbol: '₺', plural: 'Turkish Lira' },
+  { code: 'PLN', isoCode: 'PLN', name: 'Polish Zloty',        flag: '🇵🇱', symbol: 'zł', plural: 'Polish Zloty' },
+  { code: 'CZK', isoCode: 'CZK', name: 'Czech Koruna',        flag: '🇨🇿', symbol: 'Kč', plural: 'Czech Koruna' },
+  { code: 'ILS', isoCode: 'ILS', name: 'Israeli Shekel',      flag: '🇮🇱', symbol: '₪', plural: 'Israeli Shekels' },
+  { code: 'EGP', isoCode: 'EGP', name: 'Egyptian Pound',      flag: '🇪🇬', symbol: 'E£', plural: 'Egyptian Pounds' },
+  { code: 'COP', isoCode: 'COP', name: 'Colombian Peso',      flag: '🇨🇴', symbol: '$', plural: 'Colombian Pesos' },
+  { code: 'CLP', isoCode: 'CLP', name: 'Chilean Peso',        flag: '🇨🇱', symbol: '$', plural: 'Chilean Pesos' },
+  { code: 'PEN', isoCode: 'PEN', name: 'Peruvian Sol',        flag: '🇵🇪', symbol: 'S/', plural: 'Peruvian Soles' },
+  { code: 'DKK', isoCode: 'DKK', name: 'Danish Krone',        flag: '🇩🇰', symbol: 'kr', plural: 'Danish Krone' },
+  { code: 'ISK', isoCode: 'ISK', name: 'Icelandic Krona',     flag: '🇮🇸', symbol: 'kr', plural: 'Icelandic Krona' },
+  { code: 'HUF', isoCode: 'HUF', name: 'Hungarian Forint',    flag: '🇭🇺', symbol: 'Ft', plural: 'Hungarian Forint' },
+  { code: 'RON', isoCode: 'RON', name: 'Romanian Leu',        flag: '🇷🇴', symbol: 'lei', plural: 'Romanian Lei' }
+];
+let customCurrencies = []; // user-added currencies, loaded from localStorage below
+function findCurrency(code) { return CURRENCIES.find(c => c.code === code) || customCurrencies.find(c => c.code === code); }
+function allCurrencies() { return CURRENCIES.concat(customCurrencies); }
+
+// Flag-matching accent color per currency, used to tint cards/toggle/borders.
+// USD = American blue, MXN = Mexican red; the rest approximate their flag's dominant color.
+const CURRENCY_THEME = {
+  USD: '#0a3ebf', // American blue
+  MXN: '#ce1126', // Mexican red
+  EUR: '#003399', // EU blue
+  'EUR-ES': '#aa151b', // Spain red
+  'EUR-FR': '#0055a4', // France blue
+  JPY: '#bc002d', // Japan red
+  GBP: '#012169', // UK blue
+  CNY: '#de2910', // China red
+  AUD: '#00247d', // Australia blue
+  CAD: '#d52b1e', // Canada red (darkened for contrast)
+  CHF: '#d52b1e', // Switzerland red
+  HKD: '#de2910', // Hong Kong red
+  SGD: '#c8102e', // Singapore red (darkened for contrast)
+  SEK: '#006aa7', // Sweden blue
+  KRW: '#cd2e3a', // Korea red
+  NOK: '#ba0c2f', // Norway red (darkened for contrast)
+  NZD: '#00247d', // New Zealand blue
+  // All colors below verified at 5.8:1+ contrast with white text (WCAG AA needs 4.5:1)
+  THB: '#0a3ebf', // Thailand blue
+  IDR: '#c8102e', // Indonesia red
+  VND: '#c8102e', // Vietnam red
+  PHP: '#0a3ebf', // Philippines blue
+  MYR: '#010066', // Malaysia blue
+  INR: '#006622', // India green
+  AED: '#006622', // UAE green
+  ZAR: '#006622', // South Africa green
+  BRL: '#006622', // Brazil green
+  ARS: '#2e5c99', // Argentina blue
+  TRY: '#c8102e', // Turkey red
+  PLN: '#c8102e', // Poland red
+  CZK: '#0a3ebf', // Czechia blue
+  ILS: '#0a3ebf', // Israel blue
+  EGP: '#c8102e', // Egypt red
+  COP: '#0a3ebf', // Colombia blue
+  CLP: '#0a3ebf', // Chile blue
+  PEN: '#c8102e', // Peru red
+  DKK: '#c8102e', // Denmark red
+  ISK: '#0a3ebf', // Iceland blue
+  HUF: '#c8102e', // Hungary red
+  RON: '#0a3ebf'  // Romania blue
+};
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+// Readable foreground text variant: only MXN/USD get the special accessible bright/dark
+// pairing already wired up via --green/--blue-fg; everything else falls back to var(--text).
+function outputTextVarFor(isoCode) {
+  if (isoCode === 'MXN') return 'var(--green)';
+  if (isoCode === 'USD') return 'var(--blue-fg)';
+  return 'var(--text)';
+}
+
+let selectedCodes = ['MXN', 'USD']; // [currency1, currency2]
+let currency1 = findCurrency('MXN');
+let currency2 = findCurrency('USD');
+
+// --- Remember whichever currency pair the user picks, across reloads ---
+const PINNED_CURRENCIES_KEY = 'currencyConverter.pinnedCurrencies';
+
+function loadPinnedCurrencies() {
+  try {
+    const raw = localStorage.getItem(PINNED_CURRENCIES_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length === 2 && findCurrency(parsed[0]) && findCurrency(parsed[1])) {
+      return parsed;
+    }
+  } catch (err) {
+    console.warn('Could not read saved currency preference:', err);
+  }
+  return null;
+}
+
+function savePinnedCurrencies(codeA, codeB) {
+  try {
+    localStorage.setItem(PINNED_CURRENCIES_KEY, JSON.stringify([codeA, codeB]));
+  } catch (err) {
+    console.warn('Could not save currency preference:', err);
+  }
+}
+
+// Only used the very first time the app runs on a device, before any pick has
+// been saved — a light nicety on top of the pinned-choice behavior above.
+const COUNTRY_TO_CURRENCY = {
+  US: 'USD', MX: 'MXN', ES: 'EUR-ES', FR: 'EUR-FR',
+  DE: 'EUR', IT: 'EUR', PT: 'EUR', NL: 'EUR', IE: 'EUR', BE: 'EUR',
+  AT: 'EUR', GR: 'EUR', FI: 'EUR', LU: 'EUR',
+  GB: 'GBP', JP: 'JPY', CN: 'CNY', AU: 'AUD', CA: 'CAD', CH: 'CHF',
+  HK: 'HKD', SG: 'SGD', SE: 'SEK', KR: 'KRW', NO: 'NOK', NZ: 'NZD'
+};
+
+async function detectHomeAndLocalCurrencyPair() {
+  try {
+    const response = await fetch('https://ipapi.co/json/');
+    const data = await response.json();
+    const detectedCode = COUNTRY_TO_CURRENCY[data.country_code];
+    if (detectedCode && detectedCode !== 'USD') {
+      return [detectedCode, 'USD'];
+    }
+  } catch (err) {
+    console.warn('Could not auto-detect location for a default currency pair:', err);
+  }
+  return null; // fall back to the MXN/USD default
+}
+
+let history = [];
+let inputCurrency = 'c1'; // 'c1' or 'c2'
+let lastResultAmount = null;
+let lastResultCurrencyCode = 'USD';
+let tipPct = 18; // 15, 18, or 20
+
+// populate the people dropdown 1-20
+for (let i = 1; i <= 20; i++) {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = i === 1 ? '1 person' : `${i} people`;
+  peopleSelect.appendChild(opt);
+}
+peopleSelect.value = 2;
+
+let currentRate = 17.47;
+
+function getRate() {
+  return currentRate || 1;
+}
+
+function setRate(rate) {
+  currentRate = rate;
+  rateValueText.textContent = rate.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4});
+}
+
+function formatMoney(n) {
+  return '$' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// Builds a plain-text, text-message-friendly bill summary. Leads with the
+// single most useful line for someone getting this over text: exactly how
+// much they owe, with it made explicit whether that includes tip or not.
+function buildTipSummary({ withTip, withoutTip, totalWithTip, tipTotal, people, tipPct, suffix }) {
+  const s = suffix ? ' ' + suffix : '';
+  const ways = people === 1 ? '1 way' : `${people} ways`;
+  return [
+    `💵 Each person owes: ${formatMoney(withTip)}${s} (tip included) — send this amount`,
+    '— Bill Summary —',
+    `Total with tip (${tipPct}%): ${formatMoney(totalWithTip)}${s}`,
+    `Split ${ways}`,
+    `Per person, WITH tip: ${formatMoney(withTip)}${s}  ← send this`,
+    `Per person, WITHOUT tip: ${formatMoney(withoutTip)}${s}`
+  ].join('\n\n');
+}
+
+// Copies text to the clipboard, using the modern API with a manual
+// textarea-select fallback for older/stricter browser contexts.
+async function copyTextToClipboard(text, btn) {
+  let ok = false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }
+  } catch (err) {
+    // Some embedded/preview contexts (like this one) block the modern Clipboard
+    // API via a Permissions-Policy header. That's expected here, not a real
+    // failure — the execCommand fallback below handles it seamlessly, so this
+    // is just an informational note rather than an error.
+    console.info('Clipboard API unavailable in this context, using fallback copy method instead.');
+  }
+  if (!ok) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (err2) {
+      console.error('Fallback copy failed:', err2);
+    }
+  }
+  if (!btn) return ok;
+  const original = btn.textContent;
+  if (ok) {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+  } else {
+    btn.textContent = 'Copy failed — try again';
+  }
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.classList.remove('copied');
+  }, 1600);
+  return ok;
+}
+
+// Inserts a <wbr> after every comma so long numbers preferentially wrap at
+// thousands-separators instead of breaking in the middle of a digit group.
+function withCommaBreaks(str) {
+  return String(str).replace(/,/g, ',<wbr>');
+}
+
+// Turns a number into a plain-language "roughly X billion, Y million..." summary.
+// Drops everything below the smallest included magnitude for an approximate feel.
+function roughWords(n, pluralName) {
+  n = Math.abs(n);
+  if (n < 1000) {
+    return `${Math.round(n).toLocaleString('en-US')} ${pluralName}`;
+  }
+  const scales = [
+    [1e12, 'trillion'],
+    [1e9, 'billion'],
+    [1e6, 'million'],
+    [1e3, 'thousand']
+  ];
+  // Which magnitudes actually apply, top 3 at most
+  const applicable = scales.filter(([value]) => n >= value).slice(0, 3);
+  // Round the whole number to the precision of the smallest included magnitude
+  // first, so a value like 94,828 rounds up to "95 thousand" instead of
+  // truncating down to "94 thousand".
+  const smallest = applicable[applicable.length - 1][0];
+  const rounded = Math.round(n / smallest) * smallest;
+
+  let parts = [];
+  let remainder = rounded;
+  for (const [value, label] of applicable) {
+    const count = Math.floor(remainder / value);
+    if (count > 0) parts.push(`${count.toLocaleString('en-US')} ${label}`);
+    remainder %= value;
+  }
+  return `${parts.join(', ')} ${pluralName}`;
+}
+
+// Parses an input like "320 + 20 + 5.50" into its individual numeric terms and their sum.
+// Ignores stray/empty segments (e.g. a trailing "+") rather than failing outright.
+function parsePriceExpression(str) {
+  const parts = String(str).split('+').map(s => s.trim()).filter(s => s !== '');
+  const terms = parts.map(p => parseFloat(p)).filter(n => !isNaN(n));
+  const sum = terms.reduce((a, b) => a + b, 0);
+  return { terms, sum, isMultiple: terms.length > 1, valid: terms.length > 0 };
+}
+
+function updatePriceHint() {
+  const { terms, sum, isMultiple } = parsePriceExpression(priceInput.value);
+  if (!isMultiple) {
+    priceHint.textContent = '';
+    return;
+  }
+  const termsText = terms.map(t => t.toLocaleString('en-US', {maximumFractionDigits: 2})).join(' + ');
+  const sumText = sum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  priceHint.innerHTML = `${termsText} = <span class="price-hint-total">${sumText}</span>`;
+}
+function autoResizePriceInput() {
+  priceInput.style.height = 'auto';
+  priceInput.style.height = priceInput.scrollHeight + 'px';
+}
+priceInput.addEventListener('input', updatePriceHint);
+priceInput.addEventListener('input', autoResizePriceInput);
+priceInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    convertBtn.click();
+  }
+});
+
+addTermBtn.addEventListener('click', () => {
+  const start = priceInput.selectionStart ?? priceInput.value.length;
+  const end = priceInput.selectionEnd ?? priceInput.value.length;
+  const before = priceInput.value.slice(0, start);
+  const after = priceInput.value.slice(end);
+  const needsSpace = before.length > 0 && !before.endsWith(' ');
+  const insertion = (needsSpace ? ' ' : '') + '+ ';
+  priceInput.value = before + insertion + after;
+  const caret = (before + insertion).length;
+  priceInput.focus();
+  priceInput.setSelectionRange(caret, caret);
+  updatePriceHint();
+  autoResizePriceInput();
+});
+
+// --- apply the active currency pair to all UI labels ---
+function renderToggleOptionText() {
+  optC1.textContent = (inputCurrency === 'c1' ? `${currency1.flag} ` : '') + currency1.name;
+  optC2.textContent = (inputCurrency === 'c2' ? `${currency2.flag} ` : '') + currency2.name;
+}
+
+// Keeps the toggle a fixed height regardless of which side is active. Since
+// only the active side shows its flag, the same name can wrap to a different
+// number of lines depending on which side it's on — this measures both
+// currencies in their "with flag" (worst-case, widest) form using real DOM
+// layout, and locks the track to whichever needs the most room, so toggling
+// back and forth never changes the height.
+let _toggleMeasurer = null;
+function syncToggleHeight() {
+  if (!_toggleMeasurer) {
+    _toggleMeasurer = document.createElement('div');
+    _toggleMeasurer.style.cssText = 'position:absolute; visibility:hidden; pointer-events:none; left:-9999px; top:-9999px;';
+    _toggleMeasurer.className = 'toggle-option';
+    document.body.appendChild(_toggleMeasurer);
+  }
+  const trackWidth = toggleTrack.clientWidth;
+  if (!trackWidth) return; // not laid out yet (e.g. panel still collapsed) — skip until it is
+  const optionWidth = (trackWidth - 12) / 2; // track has 6px padding each side, two equal flex children
+  _toggleMeasurer.style.width = optionWidth + 'px';
+
+  _toggleMeasurer.textContent = `${currency1.flag} ${currency1.name}`;
+  const h1 = _toggleMeasurer.scrollHeight;
+  _toggleMeasurer.textContent = `${currency2.flag} ${currency2.name}`;
+  const h2 = _toggleMeasurer.scrollHeight;
+
+  toggleTrack.style.minHeight = (Math.max(h1, h2) + 12) + 'px'; // +12 = track's own top+bottom padding
+}
+let _toggleSyncDebounce = null;
+function debouncedSyncToggleHeight() {
+  clearTimeout(_toggleSyncDebounce);
+  _toggleSyncDebounce = setTimeout(syncToggleHeight, 50);
+}
+window.addEventListener('resize', debouncedSyncToggleHeight);
+// ResizeObserver catches cases window.resize can miss — e.g. some browsers'
+// font-size/accessibility text scaling doesn't change window dimensions at
+// all, so no resize event fires, even though the toggle's content now needs
+// more or less room. Watching main-card (not toggleTrack itself) avoids a
+// feedback loop, since we're the ones setting toggleTrack's own height.
+if (typeof ResizeObserver !== 'undefined') {
+  const _toggleResizeObserver = new ResizeObserver(debouncedSyncToggleHeight);
+  const _glassContainer = document.querySelector('.main-card');
+  if (_glassContainer) _toggleResizeObserver.observe(_glassContainer);
+}
+
+function renderCurrencyLabels() {
+  renderToggleOptionText();
+  rateEqualsLabel.textContent = `1 ${currency2.isoCode} =`;
+  rateSuffix.textContent = currency1.isoCode;
+  currencyMark.textContent = (inputCurrency === 'c1' ? currency1 : currency2).symbol;
+  currenciesSummary.textContent = `${currency1.flag} ${currency1.isoCode} · ${currency2.flag} ${currency2.isoCode}`;
+  syncToggleHeight();
+}
+
+function setCurrency(side) {
+  inputCurrency = side;
+  const activeCode = (side === 'c1' ? currency1.code : currency2.code);
+  const activeIsUsd = activeCode === 'USD';
+  toggleTrack.classList.toggle('c2', side === 'c2');
+  optC1.classList.toggle('active', side === 'c1');
+  optC2.classList.toggle('active', side === 'c2');
+  document.body.classList.toggle('usd-mode', activeIsUsd);
+  currencyMark.textContent = (side === 'c1' ? currency1 : currency2).symbol;
+  renderToggleOptionText();
+
+  const accent = CURRENCY_THEME[activeCode] || '#5a6570';
+  document.documentElement.style.setProperty('--input-accent', accent);
+  document.documentElement.style.setProperty('--input-bg', hexToRgba(accent, 0.14));
+}
+
+optC1.addEventListener('click', () => setCurrency('c1'));
+optC2.addEventListener('click', () => setCurrency('c2'));
+
+function runConversion() {
+  const parsed = parsePriceExpression(priceInput.value);
+  if (!parsed.valid) {
+    answerCard.style.display = 'none';
+    answerRough.classList.remove('show');
+    answerRough.innerHTML = '';
+    splitToggleBtn.style.display = 'none';
+    splitCard.style.display = 'none';
+    return null;
+  }
+  const amount = parsed.sum;
+  const breakdown = parsed.isMultiple
+    ? parsed.terms.map(t => t.toLocaleString('en-US', {maximumFractionDigits: 2})).join(' + ') + ' = '
+    : '';
+  const rate = getRate();
+  let result, label, sub, resultCode, resultDisplayCode;
+  if (inputCurrency === 'c1') {
+    result = amount / rate;
+    label = `${currency2.flag} In ${currency2.name}`;
+    sub = `${breakdown}${amount.toFixed(2)} ${currency1.isoCode} at ${rate.toFixed(4)}`;
+    resultCode = currency2.code;
+    resultDisplayCode = currency2.isoCode;
+  } else {
+    result = amount * rate;
+    label = `${currency1.flag} In ${currency1.name}`;
+    sub = `${breakdown}${amount.toFixed(2)} ${currency2.isoCode} at ${rate.toFixed(4)}`;
+    resultCode = currency1.code;
+    resultDisplayCode = currency1.isoCode;
+  }
+  answerLabel.textContent = label;
+  answerCurrencyMark.textContent = (inputCurrency === 'c1' ? currency2 : currency1).symbol;
+  answerValue.innerHTML = withCommaBreaks(formatMoney(result).replace(/^\$/, ''));
+  answerSub.textContent = sub;
+  answerCard.style.display = 'block';
+
+  const resultCurrency = findCurrency(resultCode);
+  if (Math.abs(result) >= 1000) {
+    answerRough.innerHTML = `<span class="answer-rough-label">Roughly</span> ~ ${roughWords(result, resultCurrency ? resultCurrency.plural : resultDisplayCode)}`;
+    answerRough.classList.add('show');
+  } else {
+    answerRough.classList.remove('show');
+    answerRough.innerHTML = '';
+  }
+
+  const outputAccent = CURRENCY_THEME[resultCode] || '#5a6570';
+  document.documentElement.style.setProperty('--output-accent', outputAccent);
+  document.documentElement.style.setProperty('--output-bg', hexToRgba(outputAccent, 0.14));
+  document.documentElement.style.setProperty('--output-text', outputTextVarFor(resultDisplayCode));
+
+  lastResultAmount = result;
+  lastResultCurrencyCode = resultDisplayCode;
+  splitToggleBtn.style.display = 'block';
+  splitToggleBtn.textContent = `🧾 Split the bill`;
+  if (splitCard.style.display === 'block') calculateSplit();
+
+  return { amount, result };
+}
+
+convertBtn.addEventListener('click', () => {
+  const out = runConversion();
+  if (!out) return;
+  if (inputCurrency === 'c1') {
+    addHistory(out.amount, currency1.isoCode, out.result, currency2.isoCode);
+  } else {
+    addHistory(out.result, currency1.isoCode, out.amount, currency2.isoCode);
+  }
+});
+
+function calculateSplit() {
+  if (lastResultAmount === null) return;
+  const people = parseInt(peopleSelect.value, 10) || 1;
+  const total = lastResultAmount;
+  const perPerson = total / people;
+  const tipTotal = total * (tipPct / 100);
+  const tipPerPerson = tipTotal / people;
+  const totalWithTip = total + tipTotal;
+  const totalWithTipPerPerson = totalWithTip / people;
+
+  const fmt = (n) => `${formatMoney(n)} ${lastResultCurrencyCode}`;
+  perPersonValue.textContent = fmt(perPerson);
+  tipTotalLabel.textContent = `Tip total (${tipPct}%)`;
+  tipPerPersonLabel.textContent = `Tip per person (${tipPct}%)`;
+  tipTotalValue.textContent = fmt(tipTotal);
+  tipPerPersonValue.textContent = fmt(tipPerPerson);
+  totalWithTipValue.textContent = fmt(totalWithTip);
+  totalWithTipPerPersonValue.textContent = fmt(totalWithTipPerPerson);
+
+  // "other" currency: whichever side was NOT used for the result
+  const rate = getRate();
+  const otherCode = (lastResultCurrencyCode === currency2.isoCode) ? currency1.isoCode : currency2.isoCode;
+  const toOther = (n) => (lastResultCurrencyCode === currency2.isoCode) ? n * rate : n / rate;
+  const fmtAlt = (n) => `≈ ${formatMoney(toOther(n))} ${otherCode}`;
+
+  perPersonAlt.textContent = fmtAlt(perPerson);
+  tipTotalAlt.textContent = fmtAlt(tipTotal);
+  tipPerPersonAlt.textContent = fmtAlt(tipPerPerson);
+  totalWithTipAlt.textContent = fmtAlt(totalWithTip);
+  totalWithTipPerPersonAlt.textContent = fmtAlt(totalWithTipPerPerson);
+}
+
+const copySplitBtn = document.getElementById('copySplitBtn');
+copySplitBtn.addEventListener('click', () => {
+  if (lastResultAmount === null) return;
+  const people = parseInt(peopleSelect.value, 10) || 1;
+  const total = lastResultAmount;
+  const tipTotal = total * (tipPct / 100);
+  const totalWithTip = total + tipTotal;
+  const summary = buildTipSummary({
+    withTip: totalWithTip / people,
+    withoutTip: total / people,
+    totalWithTip,
+    tipTotal,
+    people,
+    tipPct,
+    suffix: lastResultCurrencyCode
+  });
+  copyTextToClipboard(summary, copySplitBtn);
+});
+
+showBothCheckbox.addEventListener('change', () => {
+  splitCard.classList.toggle('show-both', showBothCheckbox.checked);
+});
+
+const tipCustomRow = document.getElementById('tipCustomRow');
+const tipCustomInput = document.getElementById('tipCustomInput');
+
+tipTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('.tip-tab');
+  if (!btn) return;
+  [...tipTabs.querySelectorAll('.tip-tab')].forEach(t => t.classList.toggle('active', t === btn));
+  if (btn.dataset.pct === 'custom') {
+    tipCustomRow.style.display = 'flex';
+    tipPct = parseFloat(tipCustomInput.value) || 0;
+    tipCustomInput.focus();
+  } else {
+    tipCustomRow.style.display = 'none';
+    tipPct = parseInt(btn.dataset.pct, 10);
+  }
+  calculateSplit();
+});
+tipCustomInput.addEventListener('input', () => {
+  tipPct = parseFloat(tipCustomInput.value) || 0;
+  calculateSplit();
+});
+
+splitToggleBtn.addEventListener('click', () => {
+  const isHidden = splitCard.style.display === 'none';
+  splitCard.style.display = isHidden ? 'block' : 'none';
+  splitToggleBtn.textContent = isHidden ? `🧾 Hide split` : `🧾 Split the bill`;
+  if (isHidden) calculateSplit();
+});
+
+peopleSelect.addEventListener('change', calculateSplit);
+peopleSelect.addEventListener('input', calculateSplit);
+
+clearAllBtn.addEventListener('click', () => {
+  priceInput.value = '';
+  priceHint.textContent = '';
+  autoResizePriceInput();
+  setCurrency('c1');
+  answerCard.style.display = 'none';
+  answerRough.classList.remove('show');
+  answerRough.innerHTML = '';
+  splitCard.style.display = 'none';
+  splitToggleBtn.style.display = 'none';
+  peopleSelect.value = 2;
+  tipPct = 18;
+  showBothCheckbox.checked = false;
+  splitCard.classList.remove('show-both');
+  [...tipTabs.querySelectorAll('.tip-tab')].forEach(t => t.classList.toggle('active', t.dataset.pct === '18'));
+  tipCustomRow.style.display = 'none';
+  tipCustomInput.value = '';
+  lastResultAmount = null;
+  history = [];
+  renderHistory();
+});
+
+// Primary source: European Central Bank official reference rates, via the
+// open-source Frankfurter API. This is about as authoritative as retail-
+// accessible FX data gets — no key needed, callable straight from a browser.
+async function fetchFromECB() {
+  const response = await fetch(`https://api.frankfurter.dev/v1/latest?base=${encodeURIComponent(currency2.isoCode)}&symbols=${encodeURIComponent(currency1.isoCode)}`);
+  const data = await response.json();
+  if (data && data.rates && typeof data.rates[currency1.isoCode] === 'number') {
+    return data.rates[currency1.isoCode];
+  }
+  throw new Error('ECB (Frankfurter): no rate in response');
+}
+
+// Backup source, used only if the ECB feed is unreachable.
+async function fetchFromBackupSource() {
+  const response = await fetch(`https://open.er-api.com/v6/latest/${encodeURIComponent(currency2.isoCode)}`);
+  const data = await response.json();
+  if (data.result === 'success' && data.rates && typeof data.rates[currency1.isoCode] === 'number') {
+    return data.rates[currency1.isoCode];
+  }
+  throw new Error('backup source: no rate in response');
+}
+
+async function fetchLiveRate() {
+  refreshRateBtn.classList.add('spinning');
+  rateFreshness.textContent = 'checking…';
+  rateFreshness.className = 'rate-freshness';
+
+  let rate = null;
+  let sourceLabel = '';
+  try {
+    rate = await fetchFromECB();
+    sourceLabel = 'ECB rate';
+  } catch (err) {
+    console.warn('ECB rate lookup failed, trying backup source:', err);
+    try {
+      rate = await fetchFromBackupSource();
+      sourceLabel = 'current';
+    } catch (err2) {
+      console.error('Both exchange rate sources failed:', err2);
+    }
+  }
+
+  if (rate !== null && rate > 0 && rate < 1000000) {
+    setRate(rate);
+    if (answerCard.style.display === 'block') runConversion();
+    lastRateFetchTime = Date.now();
+    const now = new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
+    rateFreshness.textContent = `${sourceLabel} · updated ${now}`;
+    rateFreshness.className = 'rate-freshness live';
+    refreshRateBtn.classList.remove('spinning');
+    checkRateStaleness();
+    return;
+  }
+
+  rateFreshness.textContent = 'using saved rate — tap to retry';
+  rateFreshness.className = 'rate-freshness stale';
+  refreshRateBtn.classList.remove('spinning');
+  checkRateStaleness();
+}
+
+refreshRateBtn.addEventListener('click', fetchLiveRate);
+
+function addHistory(leftAmount, leftCode, rightAmount, rightCode) {
+  history.unshift({leftAmount, leftCode, rightAmount, rightCode, time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})});
+  history = history.slice(0, 8);
+  renderHistory();
+}
+
+function renderHistory() {
+  if (history.length === 0) { historyWrap.style.display = 'none'; return; }
+  historyWrap.style.display = 'block';
+  historyList.innerHTML = history.map(h => `
+    <div class="history-item">
+      <span class="left">${withCommaBreaks(h.leftAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}))} ${h.leftCode} <span style="opacity:0.6">· ${h.time}</span></span>
+      <span class="right">${withCommaBreaks(formatMoney(h.rightAmount))} ${h.rightCode}</span>
+    </div>
+  `).join('');
+}
+
+clearBtn.addEventListener('click', () => { history = []; renderHistory(); });
+
+// --- Dark mode iOS switch ---
+function setTheme(isDark) {
+  document.body.classList.toggle('light-mode', !isDark);
+  darkModeSwitch.classList.toggle('on', isDark);
+  darkModeSwitch.setAttribute('aria-checked', String(isDark));
+}
+darkModeSwitch.addEventListener('click', () => {
+  setTheme(!darkModeSwitch.classList.contains('on'));
+});
+
+// --- Background style: Dark (default) or Canadian Rainbow ---
+const BACKGROUND_KEY = 'currencyConverter.background';
+const backgroundRow = document.getElementById('backgroundRow');
+const backgroundChevron = document.getElementById('backgroundChevron');
+const backgroundPanel = document.getElementById('backgroundPanel');
+const backgroundSummary = document.getElementById('backgroundSummary');
+const bgOptionDark = document.getElementById('bgOptionDark');
+const bgOptionRainbow = document.getElementById('bgOptionRainbow');
+
+function applyBackground(choice, skipSave) {
+  const isRainbow = choice === 'rainbow';
+  document.body.classList.toggle('bg-rainbow', isRainbow);
+  backgroundSummary.textContent = isRainbow ? '🌈 Canadian Rainbow' : '🌑 Dark';
+  bgOptionDark.checked = !isRainbow;
+  bgOptionRainbow.checked = isRainbow;
+  if (!skipSave) {
+    try { localStorage.setItem(BACKGROUND_KEY, choice); }
+    catch (err) { console.warn('Could not save background preference:', err); }
+  }
+}
+
+backgroundRow.addEventListener('click', () => {
+  const isOpen = backgroundPanel.classList.toggle('open');
+  backgroundChevron.classList.toggle('open', isOpen);
+});
+bgOptionDark.addEventListener('change', () => { if (bgOptionDark.checked) applyBackground('dark'); });
+bgOptionRainbow.addEventListener('change', () => { if (bgOptionRainbow.checked) applyBackground('rainbow'); });
+
+// Restore saved choice on load (defaults to Dark if nothing saved yet)
+(function initBackground() {
+  let saved = 'dark';
+  try { saved = localStorage.getItem(BACKGROUND_KEY) || 'dark'; }
+  catch (err) { console.warn('Could not read saved background preference:', err); }
+  applyBackground(saved, true);
+})();
+
+// --- Currency selection panel ---
+let checkedOrder = [...selectedCodes];
+
+function applyCurrencySelection(codeA, codeB) {
+  selectedCodes = [codeA, codeB];
+  currency1 = findCurrency(codeA);
+  currency2 = findCurrency(codeB);
+  savePinnedCurrencies(codeA, codeB);
+  renderCurrencyLabels();
+  setCurrency('c1');
+  priceInput.value = '1';
+  priceHint.textContent = '';
+  autoResizePriceInput();
+  answerCard.style.display = 'none';
+  splitCard.style.display = 'none';
+  splitToggleBtn.style.display = 'none';
+  lastResultAmount = null;
+  fetchLiveRate();
+}
+
+function renderCurrencyList() {
+  // Capture current row positions before re-rendering, keyed by currency code,
+  // so we can animate the move afterward (FLIP: First, Last, Invert, Play).
+  const firstRects = {};
+  currencyListEl.querySelectorAll('.currency-row').forEach(row => {
+    firstRects[row.dataset.code] = row.getBoundingClientRect();
+  });
+
+  // Active currencies always pinned to the top (alphabetical among themselves),
+  // everything else alphabetical by name below them.
+  const sorted = [...allCurrencies()].sort((a, b) => {
+    const aActive = checkedOrder.includes(a.code);
+    const bActive = checkedOrder.includes(b.code);
+    if (aActive !== bActive) return aActive ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  currencyListEl.innerHTML = sorted.map(c => {
+    const checked = checkedOrder.includes(c.code);
+    const disabled = !checked && checkedOrder.length >= 2;
+    return `
+      <label class="currency-row ${disabled ? 'disabled' : ''}" data-code="${c.code}">
+        <input type="checkbox" data-code="${c.code}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+        <span class="currency-row-label">${c.name} ${c.flag}</span>
+        <span class="currency-row-code">${c.isoCode}</span>
+      </label>
+    `;
+  }).join('');
+  currencyHint.textContent = `Select exactly 2 currencies · ${checkedOrder.length}/2 selected`;
+
+  // Animate any row that actually moved from its previous position.
+  currencyListEl.querySelectorAll('.currency-row').forEach(row => {
+    const first = firstRects[row.dataset.code];
+    if (!first) return; // first render, or a brand-new row — nothing to animate from
+    const last = row.getBoundingClientRect();
+    const deltaY = first.top - last.top;
+    if (Math.abs(deltaY) < 1) return;
+    row.style.transition = 'none';
+    row.style.transform = `translateY(${deltaY}px)`;
+    requestAnimationFrame(() => {
+      row.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
+      row.style.transform = '';
+    });
+  });
+}
+
+// --- Custom currencies: for anywhere not in the built-in list ---
+const CUSTOM_CURRENCIES_KEY = 'currencyConverter.customCurrencies';
+
+function loadCustomCurrencies() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_CURRENCIES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.warn('Could not read saved custom currencies:', err);
+    return [];
+  }
+}
+function saveCustomCurrencies() {
+  try {
+    localStorage.setItem(CUSTOM_CURRENCIES_KEY, JSON.stringify(customCurrencies));
+  } catch (err) {
+    console.warn('Could not save custom currencies:', err);
+  }
+}
+customCurrencies = loadCustomCurrencies();
+
+// Confirms a 3-letter code is a real, currently-quoted currency before adding
+// it, by checking whether the free backup rate source recognizes it.
+async function validateCurrencyCode(code) {
+  const response = await fetch('https://open.er-api.com/v6/latest/USD');
+  const data = await response.json();
+  return !!(data && data.result === 'success' && data.rates && typeof data.rates[code] === 'number');
+}
+
+const addCurrencyRow = document.getElementById('addCurrencyRow');
+const addCurrencyForm = document.getElementById('addCurrencyForm');
+const addCurrencyCode = document.getElementById('addCurrencyCode');
+const addCurrencyName = document.getElementById('addCurrencyName');
+const addCurrencyFlag = document.getElementById('addCurrencyFlag');
+const addCurrencySubmit = document.getElementById('addCurrencySubmit');
+const addCurrencyStatus = document.getElementById('addCurrencyStatus');
+
+addCurrencyRow.addEventListener('click', () => {
+  const isOpen = addCurrencyForm.style.display === 'flex';
+  addCurrencyForm.style.display = isOpen ? 'none' : 'flex';
+  addCurrencyRow.textContent = isOpen ? '+ Add a currency not listed' : '– Cancel';
+  if (!isOpen) addCurrencyCode.focus();
+});
+
+addCurrencySubmit.addEventListener('click', async () => {
+  const code = addCurrencyCode.value.trim().toUpperCase();
+  const name = addCurrencyName.value.trim();
+  const flag = addCurrencyFlag.value.trim() || '💱';
+
+  if (code.length !== 3) {
+    addCurrencyStatus.textContent = 'Enter a 3-letter currency code, like THB or AED.';
+    addCurrencyStatus.className = 'add-currency-status error';
+    return;
+  }
+  if (!name) {
+    addCurrencyStatus.textContent = 'Give it a name so it reads well in the list.';
+    addCurrencyStatus.className = 'add-currency-status error';
+    return;
+  }
+  if (findCurrency(code)) {
+    addCurrencyStatus.textContent = `${code} is already in the list above.`;
+    addCurrencyStatus.className = 'add-currency-status error';
+    return;
+  }
+
+  addCurrencySubmit.disabled = true;
+  addCurrencyStatus.textContent = 'Checking that code is real…';
+  addCurrencyStatus.className = 'add-currency-status';
+
+  try {
+    const isValid = await validateCurrencyCode(code);
+    if (!isValid) {
+      addCurrencyStatus.textContent = `Couldn't find "${code}" — double check it's a valid ISO currency code.`;
+      addCurrencyStatus.className = 'add-currency-status error';
+      addCurrencySubmit.disabled = false;
+      return;
+    }
+    customCurrencies.push({ code, isoCode: code, name, flag, symbol: code, plural: name });
+    saveCustomCurrencies();
+    addCurrencyStatus.textContent = `Added ${flag} ${name} (${code}) — select it below.`;
+    addCurrencyStatus.className = 'add-currency-status success';
+    addCurrencyCode.value = '';
+    addCurrencyName.value = '';
+    addCurrencyFlag.value = '';
+    renderCurrencyList();
+  } catch (err) {
+    console.error('Currency validation failed:', err);
+    addCurrencyStatus.textContent = 'Could not check that code right now — check your connection and try again.';
+    addCurrencyStatus.className = 'add-currency-status error';
+  }
+  addCurrencySubmit.disabled = false;
+});
+
+currencyListEl.addEventListener('change', (e) => {
+  const box = e.target.closest('input[type="checkbox"]');
+  if (!box) return;
+  const code = box.dataset.code;
+  if (box.checked) {
+    if (checkedOrder.length < 2 && !checkedOrder.includes(code)) checkedOrder.push(code);
+  } else {
+    checkedOrder = checkedOrder.filter(c => c !== code);
+  }
+  renderCurrencyList();
+  if (checkedOrder.length === 2) {
+    applyCurrencySelection(checkedOrder[0], checkedOrder[1]);
+  }
+});
+
+currenciesRow.addEventListener('click', () => {
+  const isOpen = currencyPanel.classList.toggle('open');
+  currenciesChevron.classList.toggle('open', isOpen);
+  if (isOpen) {
+    checkedOrder = [...selectedCodes];
+    renderCurrencyList();
+  }
+});
+
+// Jump down to the footer and open the currency selector — used by the
+// settings-icon shortcut next to the exchange rate's refresh button.
+function openCurrencySelectorFromTop() {
+  if (!currencyPanel.classList.contains('open')) {
+    currencyPanel.classList.add('open');
+    currenciesChevron.classList.add('open');
+    checkedOrder = [...selectedCodes];
+    renderCurrencyList();
+  }
+  currenciesRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+const jumpToCurrencySettingsBtn = document.getElementById('jumpToCurrencySettingsBtn');
+jumpToCurrencySettingsBtn.addEventListener('click', openCurrencySelectorFromTop);
+
+// --- About: version number + placeholder download URL + share ---
+const APP_VERSION = 'v1.0.0'; // bump this whenever you push a new version
+const APP_DOWNLOAD_URL = 'https://msui.github.io/currency-converter/';
+
+const aboutRow = document.getElementById('aboutRow');
+const aboutChevron = document.getElementById('aboutChevron');
+const aboutPanel = document.getElementById('aboutPanel');
+const aboutVersionSummary = document.getElementById('aboutVersionSummary');
+const aboutVersionValue = document.getElementById('aboutVersionValue');
+const aboutUrl = document.getElementById('aboutUrl');
+const aboutShareBtn = document.getElementById('aboutShareBtn');
+
+aboutVersionSummary.textContent = APP_VERSION;
+aboutVersionValue.textContent = APP_VERSION;
+aboutUrl.textContent = APP_DOWNLOAD_URL;
+
+aboutRow.addEventListener('click', () => {
+  const isOpen = aboutPanel.classList.toggle('open');
+  aboutChevron.classList.toggle('open', isOpen);
+});
+
+// Tapping the URL text itself copies it — handy since it's too long to easily select on mobile.
+aboutUrl.addEventListener('click', () => copyTextToClipboard(APP_DOWNLOAD_URL, null));
+
+aboutShareBtn.addEventListener('click', async () => {
+  if (navigator.share) {
+    try {
+      // Some restricted/embedded contexts silently block the Share API without
+      // ever rejecting the promise — it just hangs. Race it against a timeout
+      // so we still fall through to a visible outcome instead of doing nothing.
+      const sharePromise = navigator.share({
+        title: 'Currency Converter',
+        text: `Check out this currency converter (${APP_VERSION}):`,
+        url: APP_DOWNLOAD_URL
+      });
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('share timed out')), 1500));
+      await Promise.race([sharePromise, timeout]);
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // user closed the share sheet on purpose
+      console.warn('Share unavailable or failed, falling back to copy:', err);
+    }
+  }
+  copyTextToClipboard(APP_DOWNLOAD_URL, aboutShareBtn);
+});
+
+// --- Standalone Tip Calculator (no conversion involved) ---
+const tipCalcRow = document.getElementById('tipCalcRow');
+const tipCalcChevron = document.getElementById('tipCalcChevron');
+const tipCalcPanel = document.getElementById('tipCalcPanel');
+const tipCalcAmount = document.getElementById('tipCalcAmount');
+const tipCalcPeople = document.getElementById('tipCalcPeople');
+const tipCalcTabs = document.getElementById('tipCalcTabs');
+const tipCalcPerPerson = document.getElementById('tipCalcPerPerson');
+const tipCalcTipPerPersonLabel = document.getElementById('tipCalcTipPerPersonLabel');
+const tipCalcTipPerPerson = document.getElementById('tipCalcTipPerPerson');
+const tipCalcTotalPerPerson = document.getElementById('tipCalcTotalPerPerson');
+const tipCalcTipTotalLabel = document.getElementById('tipCalcTipTotalLabel');
+const tipCalcTipTotal = document.getElementById('tipCalcTipTotal');
+const tipCalcTotal = document.getElementById('tipCalcTotal');
+const tipCalcClearBtn = document.getElementById('tipCalcClearBtn');
+const tipCalcMinimizeBtn = document.getElementById('tipCalcMinimizeBtn');
+
+let tipCalcPct = 18;
+
+for (let i = 1; i <= 20; i++) {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = i === 1 ? '1 person' : `${i} people`;
+  tipCalcPeople.appendChild(opt);
+}
+tipCalcPeople.value = 2;
+
+function calculateTipCalc() {
+  const amount = parseFloat(tipCalcAmount.value) || 0;
+  const people = parseInt(tipCalcPeople.value, 10) || 1;
+  const perPerson = amount / people;
+  const tipTotal = amount * (tipCalcPct / 100);
+  const tipPerPerson = tipTotal / people;
+  const total = amount + tipTotal;
+  const totalPerPerson = total / people;
+
+  tipCalcPerPerson.textContent = formatMoney(perPerson);
+  tipCalcTipPerPersonLabel.textContent = `Tip per person (${tipCalcPct}%)`;
+  tipCalcTipPerPerson.textContent = formatMoney(tipPerPerson);
+  tipCalcTotalPerPerson.textContent = formatMoney(totalPerPerson);
+  tipCalcTipTotalLabel.textContent = `Tip total (${tipCalcPct}%)`;
+  tipCalcTipTotal.textContent = formatMoney(tipTotal);
+  tipCalcTotal.textContent = formatMoney(total);
+}
+
+tipCalcAmount.addEventListener('input', calculateTipCalc);
+tipCalcPeople.addEventListener('change', calculateTipCalc);
+tipCalcPeople.addEventListener('input', calculateTipCalc);
+
+const copyTipCalcBtn = document.getElementById('copyTipCalcBtn');
+copyTipCalcBtn.addEventListener('click', () => {
+  const amount = parseFloat(tipCalcAmount.value) || 0;
+  const people = parseInt(tipCalcPeople.value, 10) || 1;
+  const tipTotal = amount * (tipCalcPct / 100);
+  const totalWithTip = amount + tipTotal;
+  const summary = buildTipSummary({
+    withTip: totalWithTip / people,
+    withoutTip: amount / people,
+    totalWithTip,
+    tipTotal,
+    people,
+    tipPct: tipCalcPct,
+    suffix: ''
+  });
+  copyTextToClipboard(summary, copyTipCalcBtn);
+});
+const tipCalcCustomRow = document.getElementById('tipCalcCustomRow');
+const tipCalcCustomInput = document.getElementById('tipCalcCustomInput');
+
+tipCalcTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('.tip-tab');
+  if (!btn) return;
+  [...tipCalcTabs.querySelectorAll('.tip-tab')].forEach(t => t.classList.toggle('active', t === btn));
+  if (btn.dataset.pct === 'custom') {
+    tipCalcCustomRow.style.display = 'flex';
+    tipCalcPct = parseFloat(tipCalcCustomInput.value) || 0;
+    tipCalcCustomInput.focus();
+  } else {
+    tipCalcCustomRow.style.display = 'none';
+    tipCalcPct = parseInt(btn.dataset.pct, 10);
+  }
+  calculateTipCalc();
+});
+tipCalcCustomInput.addEventListener('input', () => {
+  tipCalcPct = parseFloat(tipCalcCustomInput.value) || 0;
+  calculateTipCalc();
+});
+
+// Clears only this calculator's own fields — leaves the rest of the page untouched.
+tipCalcClearBtn.addEventListener('click', () => {
+  tipCalcAmount.value = '';
+  tipCalcPeople.value = 2;
+  tipCalcPct = 18;
+  [...tipCalcTabs.querySelectorAll('.tip-tab')].forEach(t => t.classList.toggle('active', t.dataset.pct === '18'));
+  tipCalcCustomRow.style.display = 'none';
+  tipCalcCustomInput.value = '';
+  calculateTipCalc();
+  tipCalcAmount.focus();
+});
+
+function toggleTipCalc() {
+  const isOpen = tipCalcPanel.classList.toggle('open');
+  tipCalcChevron.classList.toggle('open', isOpen);
+  if (isOpen) {
+    calculateTipCalc();
+    // Wait for the panel to actually lay out, then scroll it to the top of the
+    // viewport BEFORE focusing the input — otherwise the keyboard pops up first
+    // and covers the field before we've had a chance to reposition the page.
+    requestAnimationFrame(() => {
+      tipCalcRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => tipCalcAmount.focus(), 320);
+    });
+  }
+}
+tipCalcRow.addEventListener('click', toggleTipCalc);
+tipCalcMinimizeBtn.addEventListener('click', toggleTipCalc);
+
+renderCurrencyLabels();
+setCurrency('c1');
+setRate(currentRate);
+autoResizePriceInput();
+fetchLiveRate();
+
+// On load: use a previously pinned pair if there is one. Only if this is a
+// brand-new visit (nothing saved yet) do we try a one-time geo-based guess.
+(async function initCurrencyPreference() {
+  const pinned = loadPinnedCurrencies();
+  if (pinned) {
+    applyCurrencySelection(pinned[0], pinned[1]);
+    return;
+  }
+  const guessed = await detectHomeAndLocalCurrencyPair();
+  if (guessed) {
+    applyCurrencySelection(guessed[0], guessed[1]);
+  }
+})();
+</script>
+</body>
+</html>
