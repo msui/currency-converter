@@ -1,6 +1,6 @@
 # Currency Converter
 
-*Current version: v1.4.0 — matches what's live at the URL below. If you update the site, bump this number to keep this README in sync.*
+*Current version: v1.4.1 — matches what's live at the URL below. If you update the site, bump this number to keep this README in sync.*
 
 A single-file, no-install currency converter and bill-splitting tool built for travel. Download `index.html` and it works completely offline — handy when you're traveling and don't have signal or don't want to pay for roaming data. Prefer not to download anything? Just use it directly from the live URL below instead.
 
